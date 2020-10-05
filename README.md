@@ -4,6 +4,16 @@ Covid-19 has attacked humankind for nearly ten months that not only infects mill
 
 In specific, we collect covid-19 data source and other relevant data sources that represent our economy and healthcare system such as stock prices, unemployment rate, health care indexes.  visualizes the changes of covid-19 cases along with other interesting features in a same time series. 
 
+This project provides the visual view for those questions:
+* The effects of the coronavirus (COVID-19) pandemic on the stock market.
+  * The most raised and dropped stocks 
+  * The most stable/unstable stocks
+  * The most promising stocks
+* The effects of COVID-19 on the labor market ([source](https://www.bls.gov/cps/effects-of-the-coronavirus-covid-19-pandemic.htm))
+  * Top 10 occupations are most effected by Covid-19?
+  * What are the unimployment rates by race, occupation during the pendemic?
+  * How many working people have to take care of children who cannot go to school?
+
 ## Building the datasets
 In this section, we describle how to get data from datasources.
 
@@ -44,10 +54,8 @@ from yahoo_finance import Share
 * Frequency: monthly
 * Interested features:
   * Unemployment Rate
-  * Unemployment Rate - Black or African American
-  * Unemployment Rate - Hispanic or Latino
-  * Unemployment Rate - White
-  * Unemployment Rate - Asian
+  * Unemployment Rate - Races (Black or African American, Hispanic or Latino, White, Asian)
+  * Unemployment Rate - Occupations [source](https://www.bls.gov/webapps/legacy/cpsatab13.htm)
 
 ```python
 import requests
