@@ -19,7 +19,7 @@ In this section, we describle how to get data from datasources.
 
 ### Covid-19
 
-* [Data source](https://covidtracking.com/data)
+* [Data source](https://covidtracking.com/data), [JHU CSSE Covid-19 Dataset](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)
 * Type: Time series
 * Supported methods: API, csv
 * Frequency: daily
