@@ -14,8 +14,17 @@ This project provides the visual view for those questions:
   * What are the unimployment rates by race, occupation during the pendemic?
   * How many working people have to take care of children who cannot go to school?
 
+## Expected Results
+This section describe what the final ouputs look like. The visual information will be updated later.
+
+* The main output of this project is the dashboard that displays time serires data of various interested major features (stock market, labor market, economics) along with covid-19 data in the same line chart.
+* One major feature could be "drilled" down by multiple sub categories. For example, labor market could be drilled down as employment rate, unimployment rate by races, occupations, gender.
+* When two major features have the same measurement unit, they could be displayed in the same dashboard. For example, unimployment rate and employment rate.
+
+## Methodlogy 
+
 ## Building the datasets
-In this section, we describle how to get data from datasources.
+In this section, we describle in detail how to get data from datasources.
 
 ### Covid-19
 
