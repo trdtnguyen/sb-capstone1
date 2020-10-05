@@ -10,7 +10,9 @@ In this section, we describle how to get data from datasources.
 ### Covid-19
 
 * [Data source](https://covidtracking.com/data)
-* Get data as: API, csv
+* Type: Time series
+* Supported methods: API, csv
+* Frequency: daily
 * Interested features:
 * For each country/area/territory we interested in:
   * Population
@@ -22,8 +24,56 @@ In this section, we describle how to get data from datasources.
   
 ### Stock Prices
 * Using `yahoo-finance` package ([guide](https://pypi.org/project/yahoo-finance/))
+* Type: Time series
+* Supported methods: API, json
+* Frequency: daily
+* We focus on popular stock market in the US such as S&P500, Dow Jones, and Nasdaq
 
-### Unemployment rate
+```
+$ pip install yahoo-finance
+```
+
+```
+from yahoo_finance import Share
+```
+
+### Employment / Unemployment rate
+* [Data source](https://www.bls.gov/data/)
+* Type: Time series
+* Supported methods: API, json
+* Frequency: monthly
+* Interested features:
+  * Unemployment Rate
+  * Unemployment Rate - Black or African American
+  * Unemployment Rate - Hispanic or Latino
+  * Unemployment Rate - White
+  * Unemployment Rate - Asian
+
+```python
+import requests
+import json
+import prettytable
+headers = {'Content-type': 'application/json'}
+data = json.dumps({"seriesid": ['CUUR0000SA0','SUUR0000SA0'],"startyear":"2011", "endyear":"2014"})
+p = requests.post('https://api.bls.gov/publicAPI/v2/timeseries/data/', data=data, headers=headers)
+json_data = json.loads(p.text)
+for series in json_data['Results']['series']:
+    x=prettytable.PrettyTable(["series id","year","period","value","footnotes"])
+    seriesId = series['seriesID']
+    for item in series['data']:
+        year = item['year']
+        period = item['period']
+        value = item['value']
+        footnotes=""
+        for footnote in item['footnotes']:
+            if footnote:
+                footnotes = footnotes + footnote['text'] + ','
+       'if 'M01' <= period <= 'M12':'
+            x.add_row([seriesId,year,period,value,footnotes[0:-1]])
+    output = open(seriesId + '.txt','w')
+    output.write (x.get_string())
+    output.close()
+```
 
 ### Businesses closed/bankruptcy
 
