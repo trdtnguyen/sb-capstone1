@@ -55,28 +55,46 @@ print(confirmed_df.shape)
 print(confirmed_df.head())
 ```
 ### Stock Prices
-* Using `yahoo-finance` package ([guide](https://pypi.org/project/yahoo-finance/))
+* Currently, there are three methods to get stock prices: [Yahoo Finance API](https://pypi.org/project/yahoo-finance/), [Google Finance API](https://pypi.org/project/googlefinance/), and [pandas_datareader](https://learndatasci.com/tutorials/python-finance-part-yahoo-finance-api-pandas-matplotlib/). Only the last one work.
+
 * Type: Time series
 * Supported methods: API, json
 * Frequency: daily
 * We focus on popular stock market in the US such as S&P500, Dow Jones, and Nasdaq
 
+
 ```
-$ pip install yahoo-finance
+pip install pandas-datareader
 ```
 
 ```
-from yahoo_finance import Share
+from pandas_datareader import data
+
+tickers = ['AAPL', 'MSFT', '^GSPC']
+start_date = '2020-01-01'
+end_date = '2020-09-30'
+
+for ticker in tickers:
+    panel_data = data.DataReader(ticker, 'yahoo', start_date, end_date)
+    print(type(panel_data))
+    print("ticker: ", ticker)
+    print(panel_data)
 ```
 
 ### Employment / Unemployment rate
-* [Data source](https://www.bls.gov/data/)
+* Data source: [U.S Bureau of Labor](https://www.bls.gov/data/)
 * Type: Time series
 * Supported methods: API, json
 * Frequency: monthly
+* All data from Bureau of Labor has unique series id for each feature. We list out desired features and their corresponding series_id as below
 * Interested features:
-  * Unemployment Rate
-  * Unemployment Rate - Races (Black or African American, Hispanic or Latino, White, Asian)
+  * Unemployment Rate (overall): LNS14000000
+  * Unemployment Rate Races:
+    * Black or African American: LNS14000006
+    * Hispanic or Latino: LNS14000009
+    * White: LNS14000003
+    * Asian: LNS14032183
+    
   * Unemployment Rate - Occupations [source](https://www.bls.gov/webapps/legacy/cpsatab13.htm)
 
 ```python
