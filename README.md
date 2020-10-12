@@ -96,6 +96,11 @@ for ticker in tickers:
     * Asian: LNS14032183
     
   * Unemployment Rate - Occupations [source](https://www.bls.gov/webapps/legacy/cpsatab13.htm)
+    * Management, Professional, and Related Occupations: LNU04032215
+    * Service Occupations: LNU04032218
+    * Sales and Office Occupations: LNU04032219
+    * Natural Resources, Construction, and Maintenance Occupations: LNU04032222
+    * Production, Transportation and Material Moving Occupations: LNU04032226
 
 ```python
 import requests
