@@ -1,5 +1,5 @@
 # Correlation between Covid-19 and Economic
-## Problem Definition
+## 1. Problem Definition
 Covid-19 has attacked humankind for nearly ten months that not only infects millions of people but also affects all aspects of our life. The main reason for those strugglings is we didn’t have enough knowledge about the virus to effectively prevent it. If we know exactly what and when an industry sector is affected by the pandemic, we could have better strategies to address the problem. This project visualized the changes of covid-19 cases and deaths along with related features such as stock prices, unemployment rate, business bankruptcy in the same time frame. For each timeframe, we classify an interesting feature into groups.
 
 In specific, we collect covid-19 data source and other relevant data sources that represent our economy and healthcare system such as stock prices, unemployment rate, health care indexes.  visualizes the changes of covid-19 cases along with other interesting features in a same time series. 
@@ -14,16 +14,18 @@ This project provides the visual view for those questions:
   * What are the unimployment rates by race, occupation during the pendemic?
   * How many working people have to take care of children who cannot go to school?
 
-## Expected Results
+## 2. Expected Results
 This section describe what the final ouputs look like. The visual information will be updated later.
 
 * The main output of this project is the dashboard that displays time serires data of various interested major features (stock market, labor market, economics) along with covid-19 data in the same line chart.
 * One major feature could be "drilled" down by multiple sub categories. For example, labor market could be drilled down as employment rate, unimployment rate by races, occupations, gender.
 * When two major features have the same measurement unit, they could be displayed in the same dashboard. For example, unimployment rate and employment rate.
 
-## Methodlogy 
+## 3. Data model
 
-## Building the datasets
+
+
+## 4. Building the datasets
 In this section, we describle in detail how to get data from datasources.
 
 ### Covid-19
