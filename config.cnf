@@ -1,0 +1,5 @@
+[DATABASE]
+host = localhost
+user = root
+pw = 12345678
+db_name = covid19cor
