@@ -29,6 +29,10 @@ In this section, we describle in detail how to get data from datasources.
 ### Covid-19
 
 * [Data source](https://covidtracking.com/data), [JHU CSSE Covid-19 Dataset](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)
+  * [Confirmed cases US](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv)
+  * [Deaths US](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv)
+  * [Confirmed cases global](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv)
+  * [Deaths global](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv)
 * Type: Time series
 * Supported methods: API, csv
 * Frequency: daily
@@ -41,6 +45,9 @@ In this section, we describle in detail how to get data from datasources.
   * Total tests
   * Test per case
   
+  ```
+  confirmed_cases_US_url = 
+  ```
 ### Stock Prices
 * Using `yahoo-finance` package ([guide](https://pypi.org/project/yahoo-finance/))
 * Type: Time series
