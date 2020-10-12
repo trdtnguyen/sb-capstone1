@@ -88,19 +88,19 @@ for ticker in tickers:
 * Frequency: monthly
 * All data from Bureau of Labor has unique series id for each feature. We list out desired features and their corresponding series_id as below
 * Interested features:
-  * Unemployment Rate (overall): LNS14000000
+  * Unemployment Rate (overall): `LNS14000000`
   * Unemployment Rate Races:
-    * Black or African American: LNS14000006
-    * Hispanic or Latino: LNS14000009
-    * White: LNS14000003
-    * Asian: LNS14032183
+    * Black or African American: `LNS14000006`
+    * Hispanic or Latino: `LNS14000009`
+    * White: `LNS14000003`
+    * Asian: `LNS14032183`
     
   * Unemployment Rate - Occupations [source](https://www.bls.gov/webapps/legacy/cpsatab13.htm)
-    * Management, Professional, and Related Occupations: LNU04032215
-    * Service Occupations: LNU04032218
-    * Sales and Office Occupations: LNU04032219
-    * Natural Resources, Construction, and Maintenance Occupations: LNU04032222
-    * Production, Transportation and Material Moving Occupations: LNU04032226
+    * Management, Professional, and Related Occupations: `LNU04032215`
+    * Service Occupations: `LNU04032218`
+    * Sales and Office Occupations: `LNU04032219`
+    * Natural Resources, Construction, and Maintenance Occupations: `LNU04032222`
+    * Production, Transportation and Material Moving Occupations: `LNU04032226`
 
 ```python
 import requests
