@@ -45,9 +45,13 @@ In this section, we describle in detail how to get data from datasources.
   * Total tests
   * Test per case
   
-  ```
-  confirmed_cases_US_url = 
-  ```
+```python
+import pandas as pd
+confirmed_case_global_url='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+confirmed_df = pd.read_csv(confirmed_case_global_url)
+print(confirmed_df.shape)
+print(confirmed_df.head())
+```
 ### Stock Prices
 * Using `yahoo-finance` package ([guide](https://pypi.org/project/yahoo-finance/))
 * Type: Time series
