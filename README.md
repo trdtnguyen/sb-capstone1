@@ -29,7 +29,7 @@ This section describe what the final ouputs look like. The visual information wi
 In this section, we describle in detail how to get data from datasources.
 
 ### Covid-19
-
+* This datase has two subsets: global and the US.
 * [Data source](https://covidtracking.com/data), [JHU CSSE Covid-19 Dataset](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)
   * [Confirmed cases US](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv)
   * [Deaths US](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv)
@@ -55,7 +55,8 @@ confirmed_df = pd.read_csv(confirmed_case_global_url)
 print(confirmed_df.shape)
 print(confirmed_df.head())
 ```
-Raw data sample:
+
+* US Raw data sample:
 ```
   UID iso2 iso3  code3  ...  10/15/20 10/16/20 10/17/20 10/18/20
 0  84001001   US  USA    840  ...      1949     1966     1983     1989
@@ -64,8 +65,19 @@ Raw data sample:
 3  84001007   US  USA    840  ...       761      771      775      785
 4  84001009   US  USA    840  ...      1768     1783     1807     1827
 ```
+* Global Raw data sample:
+```
+Province/State Country/Region       Lat  ...  10/16/20  10/17/20  10/18/20
+0            NaN    Afghanistan  33.93911  ...     40073     40141     40200
+1            NaN        Albania  41.15330  ...     16501     16774     17055
+2            NaN        Algeria  28.03390  ...     53998     54203     54402
+3            NaN        Andorra  42.50630  ...      3377      3377      3377
+4            NaN         Angola -11.20270  ...      7222      7462      7622
+```
 
 *** Important Note *** The raw data is in coloumn-oriented format. Data of a new day is append as new column.
+
+US:
 ```
 UID 84001001
 iso2 US
@@ -78,6 +90,17 @@ Country_Region US
 Lat 32.53952745
 Long_ -86.64408227
 Combined_Key Autauga, Alabama, US
+day1
+day2
+...
+currentday
+```
+Global: 
+```
+Province/State NaN
+Country/Region Albania
+Lat 41.1533
+Long 20.1683
 day1
 day2
 ...
