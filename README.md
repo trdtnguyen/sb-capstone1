@@ -77,7 +77,7 @@ Province/State Country/Region       Lat  ...  10/16/20  10/17/20  10/18/20
 4            NaN         Angola -11.20270  ...      7222      7462      7622
 ```
 
-*** Important Note *** The raw data is in coloumn-oriented format. Data of a new day is append as new column.
+***Important Note*** The raw data is in coloumn-oriented format. Data of a new day is append as new column.
 
 US:
 ```
@@ -116,7 +116,10 @@ currentday
 * Supported methods: API, json
 * Frequency: daily
 * We focus on popular stock market in the US such as S&P500, Dow Jones, and Nasdaq
-
+* How to extract data
+  * First, we get the master list of all stock stickers. That is done by manually input the list or using the API.
+  * Next, for each stock sticker, we get the stock prices data using Yahoo's API. 
+  * Extract data into the raw table.
 
 ```
 pip install pandas-datareader
@@ -135,7 +138,7 @@ for ticker in tickers:
     print("ticker: ", ticker)
     print(panel_data)
 ```
-* Sample data
+* Stock price data sample
 ```
 Date          High        Low       Open      Close       Volume     Adj Close
                                                                           
@@ -166,7 +169,10 @@ Date          High        Low       Open      Close       Volume     Adj Close
     * Sales and Office Occupations: `LNU04032219`
     * Natural Resources, Construction, and Maintenance Occupations: `LNU04032222`
     * Production, Transportation and Material Moving Occupations: `LNU04032226`
-
+* How to extract data:
+  * First, we build the master list of interested series (e.g., LNS14000000, LNS14000009, LNS14000003, etc). Extract the result in dimentional table.
+  * Next, for each serie, we extract data from data source using HTTP request.
+  * We extract data to raw tables.
 ```python
 import requests
 import json
