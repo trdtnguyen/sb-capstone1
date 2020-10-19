@@ -22,7 +22,7 @@ This section describe what the final ouputs look like. The visual information wi
 * When two major features have the same measurement unit, they could be displayed in the same dashboard. For example, unimployment rate and employment rate.
 
 ## 3. Data model
-
+### Covid-19
 
 
 ## 4. Building the datasets
@@ -63,6 +63,25 @@ Raw data sample:
 2  84001005   US  USA    840  ...       965      968      977      981
 3  84001007   US  USA    840  ...       761      771      775      785
 4  84001009   US  USA    840  ...      1768     1783     1807     1827
+```
+
+*** Important Note *** The raw data is in coloumn-oriented format. Data of a new day is append as new column.
+```
+UID 84001001
+iso2 US
+iso3 USA
+code3 840
+FIPS 1001.0
+Admin2 Autauga
+Province_State Alabama
+Country_Region US
+Lat 32.53952745
+Long_ -86.64408227
+Combined_Key Autauga, Alabama, US
+day1
+day2
+...
+currentday
 ```
 
 ### Stock Prices
