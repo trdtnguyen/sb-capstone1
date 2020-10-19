@@ -22,7 +22,7 @@ This section describe what the final ouputs look like. The visual information wi
 * When two major features have the same measurement unit, they could be displayed in the same dashboard. For example, unimployment rate and employment rate.
 
 ## 3. Data model
-[ERD chart](https://github.com/trdtnguyen/sb-capstone1/sql/erd.pdf)
+[ERD chart](sql/erd.pdf)
 * Raw tables: Tables used to extract raw data. Names include suffix `_raw`.
 * Dimentional tables: Tables built from transforming raw tables. Names include suffix `_dim`.
 * Fact tables: Tables build from transforming raw tables. Names inculde suffix `_fact`.
