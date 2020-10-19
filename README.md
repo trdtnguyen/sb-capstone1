@@ -22,14 +22,14 @@ This section describe what the final ouputs look like. The visual information wi
 * When two major features have the same measurement unit, they could be displayed in the same dashboard. For example, unimployment rate and employment rate.
 
 ## 3. Data model
-
+### Covid-19
 
 
 ## 4. Building the datasets
 In this section, we describle in detail how to get data from datasources.
 
 ### Covid-19
-
+* This datase has two subsets: global and the US.
 * [Data source](https://covidtracking.com/data), [JHU CSSE Covid-19 Dataset](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)
   * [Confirmed cases US](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv)
   * [Deaths US](https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv)
@@ -47,6 +47,7 @@ In this section, we describle in detail how to get data from datasources.
   * Total tests
   * Test per case
   
+* Sample code:
 ```python
 import pandas as pd
 confirmed_case_global_url='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
@@ -54,6 +55,58 @@ confirmed_df = pd.read_csv(confirmed_case_global_url)
 print(confirmed_df.shape)
 print(confirmed_df.head())
 ```
+
+* US Raw data sample:
+```
+  UID iso2 iso3  code3  ...  10/15/20 10/16/20 10/17/20 10/18/20
+0  84001001   US  USA    840  ...      1949     1966     1983     1989
+1  84001003   US  USA    840  ...      6285     6333     6350     6369
+2  84001005   US  USA    840  ...       965      968      977      981
+3  84001007   US  USA    840  ...       761      771      775      785
+4  84001009   US  USA    840  ...      1768     1783     1807     1827
+```
+* Global Raw data sample:
+```
+Province/State Country/Region       Lat  ...  10/16/20  10/17/20  10/18/20
+0            NaN    Afghanistan  33.93911  ...     40073     40141     40200
+1            NaN        Albania  41.15330  ...     16501     16774     17055
+2            NaN        Algeria  28.03390  ...     53998     54203     54402
+3            NaN        Andorra  42.50630  ...      3377      3377      3377
+4            NaN         Angola -11.20270  ...      7222      7462      7622
+```
+
+*** Important Note *** The raw data is in coloumn-oriented format. Data of a new day is append as new column.
+
+US:
+```
+UID 84001001
+iso2 US
+iso3 USA
+code3 840
+FIPS 1001.0
+Admin2 Autauga
+Province_State Alabama
+Country_Region US
+Lat 32.53952745
+Long_ -86.64408227
+Combined_Key Autauga, Alabama, US
+day1
+day2
+...
+currentday
+```
+Global: 
+```
+Province/State NaN
+Country/Region Albania
+Lat 41.1533
+Long 20.1683
+day1
+day2
+...
+currentday
+```
+
 ### Stock Prices
 * Currently, there are three methods to get stock prices: [Yahoo Finance API](https://pypi.org/project/yahoo-finance/), [Google Finance API](https://pypi.org/project/googlefinance/), and [pandas_datareader](https://learndatasci.com/tutorials/python-finance-part-yahoo-finance-api-pandas-matplotlib/). Only the last one work.
 
@@ -79,6 +132,16 @@ for ticker in tickers:
     print(type(panel_data))
     print("ticker: ", ticker)
     print(panel_data)
+```
+* Sample data
+```
+Date          High        Low       Open      Close       Volume     Adj Close
+                                                                          
+2020-01-02  75.150002  73.797501  74.059998  75.087502  135480400.0  74.573036
+2020-01-03  75.144997  74.125000  74.287498  74.357498  146322800.0  73.848030
+2020-01-06  74.989998  73.187500  73.447502  74.949997  118387200.0  74.436470
+2020-01-07  75.224998  74.370003  74.959999  74.597504  108872000.0  74.086395
+2020-01-08  76.110001  74.290001  74.290001  75.797501  132079200.0  75.278160
 ```
 
 ### Employment / Unemployment rate
@@ -127,7 +190,62 @@ for series in json_data['Results']['series']:
     output.write (x.get_string())
     output.close()
 ```
+* Sample data
+```
+CUUR0000SA0.txt
++-------------+------+--------+---------+-----------+
+|  series id  | year | period |  value  | footnotes |
++-------------+------+--------+---------+-----------+
+| CUUR0000SA0 | 2020 |  M09   | 260.280 |           |
+| CUUR0000SA0 | 2020 |  M08   | 259.918 |           |
+| CUUR0000SA0 | 2020 |  M07   | 259.101 |           |
+| CUUR0000SA0 | 2020 |  M06   | 257.797 |           |
+| CUUR0000SA0 | 2020 |  M05   | 256.394 |           |
+| CUUR0000SA0 | 2020 |  M04   | 256.389 |           |
+| CUUR0000SA0 | 2020 |  M03   | 258.115 |           |
+| CUUR0000SA0 | 2020 |  M02   | 258.678 |           |
+| CUUR0000SA0 | 2020 |  M01   | 257.971 |           |
+| CUUR0000SA0 | 2019 |  M12   | 256.974 |           |
+| CUUR0000SA0 | 2019 |  M11   | 257.208 |           |
+| CUUR0000SA0 | 2019 |  M10   | 257.346 |           |
+| CUUR0000SA0 | 2019 |  M09   | 256.759 |           |
+| CUUR0000SA0 | 2019 |  M08   | 256.558 |           |
+| CUUR0000SA0 | 2019 |  M07   | 256.571 |           |
+| CUUR0000SA0 | 2019 |  M06   | 256.143 |           |
+| CUUR0000SA0 | 2019 |  M05   | 256.092 |           |
+| CUUR0000SA0 | 2019 |  M04   | 255.548 |           |
+| CUUR0000SA0 | 2019 |  M03   | 254.202 |           |
+| CUUR0000SA0 | 2019 |  M02   | 252.776 |           |
+| CUUR0000SA0 | 2019 |  M01   | 251.712 |           |
++-------------+------+--------+---------+-----------+
 
+SUUR0000SA0.txt
++-------------+------+--------+---------+-----------+
+|  series id  | year | period |  value  | footnotes |
++-------------+------+--------+---------+-----------+
+| SUUR0000SA0 | 2020 |  M09   | 146.072 |  Initial  |
+| SUUR0000SA0 | 2020 |  M08   | 145.853 |  Initial  |
+| SUUR0000SA0 | 2020 |  M07   | 145.405 |  Initial  |
+| SUUR0000SA0 | 2020 |  M06   | 144.651 |  Interim  |
+| SUUR0000SA0 | 2020 |  M05   | 143.800 |  Interim  |
+| SUUR0000SA0 | 2020 |  M04   | 143.847 |  Interim  |
+| SUUR0000SA0 | 2020 |  M03   | 145.005 |  Interim  |
+| SUUR0000SA0 | 2020 |  M02   | 145.390 |  Interim  |
+| SUUR0000SA0 | 2020 |  M01   | 144.995 |  Interim  |
+| SUUR0000SA0 | 2019 |  M12   | 144.437 |  Interim  |
+| SUUR0000SA0 | 2019 |  M11   | 144.613 |  Interim  |
+| SUUR0000SA0 | 2019 |  M10   | 144.722 |  Interim  |
+| SUUR0000SA0 | 2019 |  M09   | 144.428 |           |
+| SUUR0000SA0 | 2019 |  M08   | 144.388 |           |
+| SUUR0000SA0 | 2019 |  M07   | 144.409 |           |
+| SUUR0000SA0 | 2019 |  M06   | 144.243 |           |
+| SUUR0000SA0 | 2019 |  M05   | 144.183 |           |
+| SUUR0000SA0 | 2019 |  M04   | 143.926 |           |
+| SUUR0000SA0 | 2019 |  M03   | 143.297 |           |
+| SUUR0000SA0 | 2019 |  M02   | 142.571 |           |
+| SUUR0000SA0 | 2019 |  M01   | 142.001 |           |
++-------------+------+--------+---------+-----------+
+```
 ### Businesses closed/bankruptcy
 
 ### Healthcare index
