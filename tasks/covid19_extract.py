@@ -37,7 +37,7 @@ def extract_us():
     print(str_conn)
     db = DB(str_conn)
 
-    table = db.get_table('covid19_raw_us')
+    table = db.get_table('covid19_us_raw')
     conn = db.get_conn()
     logger = db.get_logger()
 

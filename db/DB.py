@@ -14,7 +14,7 @@ from sqlalchemy.exc import DBAPIError
 
 class DB:
     # The global table names. Modify only this part whenever the ERD is changed.
-    TB_NAMES = ['covid19_raw_us', 'covid19_raw_global']
+    TB_NAMES = ['covid19_us_raw', 'covid19_global_raw']
 
     """Constructor
     Args:
