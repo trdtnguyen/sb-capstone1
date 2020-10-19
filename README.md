@@ -47,6 +47,7 @@ In this section, we describle in detail how to get data from datasources.
   * Total tests
   * Test per case
   
+* Sample code:
 ```python
 import pandas as pd
 confirmed_case_global_url='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
@@ -54,6 +55,16 @@ confirmed_df = pd.read_csv(confirmed_case_global_url)
 print(confirmed_df.shape)
 print(confirmed_df.head())
 ```
+Raw data sample:
+```
+  UID iso2 iso3  code3  ...  10/15/20 10/16/20 10/17/20 10/18/20
+0  84001001   US  USA    840  ...      1949     1966     1983     1989
+1  84001003   US  USA    840  ...      6285     6333     6350     6369
+2  84001005   US  USA    840  ...       965      968      977      981
+3  84001007   US  USA    840  ...       761      771      775      785
+4  84001009   US  USA    840  ...      1768     1783     1807     1827
+```
+
 ### Stock Prices
 * Currently, there are three methods to get stock prices: [Yahoo Finance API](https://pypi.org/project/yahoo-finance/), [Google Finance API](https://pypi.org/project/googlefinance/), and [pandas_datareader](https://learndatasci.com/tutorials/python-finance-part-yahoo-finance-api-pandas-matplotlib/). Only the last one work.
 
