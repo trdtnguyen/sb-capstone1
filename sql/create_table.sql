@@ -20,13 +20,14 @@ CREATE TABLE IF NOT EXISTS covid19_us_raw (
     iso2 VARCHAR(16) NOT NULL, -- country code 2 letters e.g., US
     iso3 VARCHAR (16) NOT NULL, -- country code 3 letters e.g., USA
     code3 INT NOT NULL, -- area code e.g., 840
-    FIPS double NOT NULL, -- ???
-    Admin2 VARCHAR(32), -- County name e.g., Autauga
+    FIPS double , -- ???
+    Admin2 VARCHAR(128), -- County name e.g., Autauga
     Province_State VARCHAR(32), -- State name e.g., Alabama
     Country_Region VARCHAR(32), -- Country name e.g., US
     Lat double NOT NULL,
     Long_ double NOT NULL,
     Combined_Key VARCHAR(128), -- e.g., Autauga, Alabama, US
+    Population INT,
     date datetime NOT NULL,
     confirmed int NOT NULL,
     deaths int NOT NULL

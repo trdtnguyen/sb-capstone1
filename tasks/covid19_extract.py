@@ -56,58 +56,90 @@ def extract_us():
 
     confirmed_us_df = pd.read_csv(confirmed_cases_US_url)
     death_us_df = pd.read_csv(death_US_url)
+
     total_cols = confirmed_us_df.shape[1]
     total_rows = confirmed_us_df.shape[0]
 
+    # print('Confirmed cases in US info:')
+    # print(confirmed_us_df.shape)
+    # print(confirmed_us_df.head(10))
+    # for col in confirmed_us_df.columns:
+    #     print(col)
+    #
+    # print ('Death cases in US info:')
+    # print(death_us_df.shape)
+    # print(death_us_df.head(10))
+    # for col in death_us_df.columns:
+    #     print (col)
+
     COL_NAMES = ['UID', 'iso2', 'iso3', 'code3', 'FIPS',
                  'Admin2', 'Province_State', 'Country_Region',
-                 'Lat', 'Long_', 'Combined_Key',
+                 'Lat', 'Long_', 'Combined_Key', 'Population',
                  'date', 'confirmed', 'deaths']
-    date_col = 11 # the index of date column
+    date_col = 12 # the index of date column
 
     insert_list = []
     print("Extract data from data sources ...")
-    for i in range(total_rows):
+    #for i in range(total_rows):
+    #for i, row in confirmed_us_df.iterrows():
+    print('Extract confirms values from confirmed_us_df ...', end=' ')
+    confirm_2d = []
+    for i, row in confirmed_us_df.iterrows():
+        confirm_2d.append([row[j] for j in range(date_col-1, confirmed_us_df.shape[1])])
+    print('Done.')
+
+    print('Extract remain info from death_us_df ...', end=' ')
+    pct = 0
+    for i, row in death_us_df.iterrows():
+        pct = i * 100 / total_rows
+        if pct % 10 == 0:
+            print(f'{pct} ')
+
         # build the dictionary with key : value is column_name : value
         insert_val = {}
-        insert_val['UID'] = int(confirmed_us_df.iloc[i]['UID'])
-        insert_val['iso2'] = confirmed_us_df.iloc[i]['iso2']
-        insert_val['iso3'] = confirmed_us_df.iloc[i]['iso3']
-        insert_val['code3'] = int(confirmed_us_df.iloc[i]['code3'])
-        insert_val['FIPS'] = float(confirmed_us_df.iloc[i]['FIPS'])
-        insert_val['Admin2'] = confirmed_us_df.iloc[i]['Admin2']
-        insert_val['Province_State'] = confirmed_us_df.iloc[i]['Province_State']
-        insert_val['Country_Region'] = confirmed_us_df.iloc[i]['Country_Region']
-        insert_val['Lat'] = float(confirmed_us_df.iloc[i]['Lat'])
-        insert_val['Long_'] = float(confirmed_us_df.iloc[i]['Long_'])
-        insert_val['Combined_Key'] = confirmed_us_df.iloc[i]['Combined_Key']
+        insert_val['UID'] = int(row['UID'])
+        insert_val['iso2'] = row['iso2']
+        insert_val['iso3'] = row['iso3']
+        insert_val['code3'] = int(row['code3'])
+        insert_val['FIPS'] = float(row['FIPS'])
+        insert_val['Admin2'] = row['Admin2']
+        insert_val['Province_State'] = row['Province_State']
+        insert_val['Country_Region'] = row['Country_Region']
+        insert_val['Lat'] = float(row['Lat'])
+        insert_val['Long_'] = float(row['Long_'])
+        insert_val['Combined_Key'] = row['Combined_Key']
+        insert_val['Population'] = row['Population']
 
 
         # for coln in range(date_col):
         #     insert_val[COL_NAMES[coln]] = confirmed_us_df.iloc[i][COL_NAMES[coln]]
 
         # Get date columns from date_col to the last column
-        for j in range(date_col, total_cols):
-            date = confirmed_us_df.columns[j]
+        for j in range(date_col, death_us_df.shape[1]):
+            date = death_us_df.columns[j]
             date = convert_date(date)
-            val = confirmed_us_df.iloc[i][j]
+            death_num = row[j]
+            #confirm_num = confirmed_us_df.iloc[i][j-1] # this is slow
+            confirm_num = confirm_2d[i][j-date_col]
             insert_val['date'] = date
-            insert_val['confirmed'] = int(val)
-            insert_val['deaths'] = 0
+            insert_val['confirmed'] = int(confirm_num)
+            insert_val['deaths'] = int(death_num)
 
         insert_list.append(insert_val)
 
+    df = pd.DataFrame(insert_list)
+
+    print(df)
     print("Extract data Done.")
-    print("Insert to database...")
+    print("Insert to database...", end= ' ')
     # insert database
+    # to_sql(name, con, schema=None, if_exists='fail', index=True, index_label=None, chunksize=None, dtype=None, method=None)[source]
     try:
-        #print(insert_list)
-        results = conn.execute(table.insert(), insert_list)
-        print(f'{results.rowcount} rows inserted')
-        print("Insert to database Done.")
-    except DBAPIError:
+        df.to_sql('covid19_us_raw', conn, schema=None, if_exists='append', index=False)
+        # manually insert a dictionary will not work due to the limitation number of records insert
+        #results = conn.execute(table.insert(), insert_list)
+    except ValueError:
         logger.error('Error Query')
+    print('Done.')
 
 extract_us()
-# d = convert_date('10/18/20')
-# print(d)
