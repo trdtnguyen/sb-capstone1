@@ -40,6 +40,8 @@ Dimension table for covid-19 info of countries in the global
 CREATE TABLE IF NOT EXISTS covid19_global_raw(
     Province_State VARCHAR(32),
     Country_Region VARCHAR(64), -- country 
+    Lat double NOT NULL,
+    Long_ double NOT NULL,
     date datetime NOT NULL,
     confirmed int NOT NULL,
     deaths int NOT NULL
