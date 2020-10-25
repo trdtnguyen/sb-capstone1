@@ -87,13 +87,15 @@ CREATE TABLE IF NOT EXISTS covid19_global_fact(
 CREATE TABLE IF NOT EXISTS stock_price_raw(
     stock_ticker VARCHAR(16) NOT NULL,
     date datetime NOT NULL,
-    high double NOT NULL,
-    low double NOT NULL,
-    open double NOT NULL,
-    close double NOT NULL,
-    volume double NOT NULL,
+    High double NOT NULL,
+    Low double NOT NULL,
+    Open double NOT NULL,
+    Close double NOT NULL,
+    Volume double NOT NULL,
     adj_close double NOT NULL
 );
+INSERT INTO stock_price_raw VALUES('MMM', '2020-01-01', 10.0, 5.0, 5.0, 10.0, 123, 12);
+INSERT INTO stock_price_raw VALUES('MMA', '2020-01-02', 10.0, 5.0, 5.0, 10.0, 123, 12);
 
 /*dimension table stock, represents for each stock ticker*/
 CREATE TABLE IF NOT EXISTS stock_ticker_dim(
@@ -146,3 +148,5 @@ CREATE TABLE IF NOT EXISTS BOL_series_fact(
     
     FOREIGN KEY(series_id) references BOL_series_dim(series_id)
 );
+
+

@@ -10,24 +10,25 @@ import configparser
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy import Table, select, update, insert
 
-
-confirmed_cases_US_url ='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv'
+confirmed_cases_US_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv'
 death_US_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv'
 
-confirmed_case_global_url='https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
+confirmed_case_global_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
 death_global_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
 
 """
 10/18/20 -> 2020-10-18
 """
+
+
 def convert_date(in_date):
     d_list = in_date.split('/')
     out_date = '20' + d_list[2] + '-' + d_list[0] + '-' + d_list[1]
 
     return out_date
 
-def extract_us(conn, logger):
 
+def extract_us(conn, logger):
     # insert_list = [{'UID': 84001001, 'iso2': 'US', 'iso3': 'USA', 'code3': 840, 'FIPS': 1001.0, 'Admin2': 'Autauga',
     #                 'Province_State': 'Alabama', 'Country_Region': 'US', 'Lat': 32.53952745, 'Long_': -86.64408227,
     #                 'Combined_Key': 'Autauga, Alabama, US', 'date': '2020-10-18', 'confirmed': 1989, 'deaths': 0},
@@ -63,18 +64,18 @@ def extract_us(conn, logger):
                  'Admin2', 'Province_State', 'Country_Region',
                  'Lat', 'Long_', 'Combined_Key', 'Population',
                  'date', 'confirmed', 'deaths']
-    date_col = 12 # the index of date column
+    date_col = 12  # the index of date column
 
     insert_list = []
     print("Extract data from data sources ...")
-    #for i in range(total_rows):
-    #for i, row in confirmed_us_df.iterrows():
+    # for i in range(total_rows):
+    # for i, row in confirmed_us_df.iterrows():
     print('Extract confirms values from confirmed_us_df ...', end=' ')
     confirm_2d = []
     for i, row in confirmed_us_df.iterrows():
-        #Note that confirmed_us_df has less then death_us_df one column i.e., Population.
-        #So we subtract 1 to get the correct column
-        confirm_2d.append([row[j] for j in range(date_col-1, confirmed_us_df.shape[1])])
+        # Note that confirmed_us_df has less then death_us_df one column i.e., Population.
+        # So we subtract 1 to get the correct column
+        confirm_2d.append([row[j] for j in range(date_col - 1, confirmed_us_df.shape[1])])
     print('Done.')
 
     print('Extract remain info from death_us_df ...', end=' ')
@@ -99,7 +100,6 @@ def extract_us(conn, logger):
         insert_val['Combined_Key'] = row['Combined_Key']
         insert_val['Population'] = row['Population']
 
-
         # for coln in range(date_col):
         #     insert_val[COL_NAMES[coln]] = confirmed_us_df.iloc[i][COL_NAMES[coln]]
 
@@ -108,8 +108,8 @@ def extract_us(conn, logger):
             date = death_us_df.columns[j]
             date = convert_date(date)
             death_num = row[j]
-            #confirm_num = confirmed_us_df.iloc[i][j-1] # this is slow
-            confirm_num = confirm_2d[i][j-date_col]
+            # confirm_num = confirmed_us_df.iloc[i][j-1] # this is slow
+            confirm_num = confirm_2d[i][j - date_col]
             insert_val['date'] = date
             insert_val['confirmed'] = int(confirm_num)
             insert_val['deaths'] = int(death_num)
@@ -118,18 +118,19 @@ def extract_us(conn, logger):
 
     df = pd.DataFrame(insert_list)
 
-    print(df)
+    # print(df)
     print("Extract data Done.")
-    print("Insert to database...", end= ' ')
+    print("Insert to database...", end=' ')
     # insert database
     # to_sql(name, con, schema=None, if_exists='fail', index=True, index_label=None, chunksize=None, dtype=None, method=None)[source]
     try:
         df.to_sql('covid19_us_raw', conn, schema=None, if_exists='append', index=False)
         # manually insert a dictionary will not work due to the limitation number of records insert
-        #results = conn.execute(table.insert(), insert_list)
+        # results = conn.execute(table.insert(), insert_list)
     except ValueError:
         logger.error('Error Query when extracting data for covid19_us_raw table')
     print('Done.')
+
 
 def extract_global(conn, logger):
     confirmed_global_df = pd.read_csv(confirmed_case_global_url)
@@ -151,8 +152,8 @@ def extract_global(conn, logger):
     #     print (col)
 
     COL_NAMES = ['Province_State', 'Country_Region', 'Lat', 'Long_'
-                 'date', 'confirmed', 'deaths']
-    date_col = 4 # the index of date column in the df
+                                                            'date', 'confirmed', 'deaths']
+    date_col = 4  # the index of date column in the df
     insert_list = []
     print("Extract data from data sources ...")
     print('Extract confirms values from confirmed_global_df ...', end=' ')
@@ -173,7 +174,6 @@ def extract_global(conn, logger):
         insert_val['Country_Region'] = row['Country/Region']
         insert_val['Lat'] = float(row['Lat'])
         insert_val['Long_'] = float(row['Long'])
-
 
         # Get date columns from date_col to the last column
         for j in range(date_col, death_global_df.shape[1]):
@@ -203,6 +203,7 @@ def extract_global(conn, logger):
         logger.error('Error Query when extracting data for covid19_global_raw table')
     print('Done.')
 
+
 config = configparser.ConfigParser()
 # config.read('config.cnf')
 config.read('../config.cnf')
@@ -217,5 +218,5 @@ table = db.get_table('covid19_us_raw')
 conn = db.get_conn()
 logger = db.get_logger()
 
-#extract_us(conn, logger)
+# extract_us(conn, logger)
 extract_global(conn, logger)
