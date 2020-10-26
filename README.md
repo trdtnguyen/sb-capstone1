@@ -257,3 +257,36 @@ SUUR0000SA0.txt
 ### Businesses closed/bankruptcy
 
 ### Healthcare index
+
+## 5. Transform Data
+This stage transform data from the raw tables to our fact and demensional tables.
+
+### Covid-19
+* `country_dim` table: 
+  * Dimentional table keeps general informaiton of countries in the world.
+  * Aggregate data from States/Province of a country (if any)
+  * We buit this table by joining `covid19_global_raw` and `world.country` (provided in MySQL workbench)
+  
+```sql
+CREATE TABLE IF NOT EXISTS country_dim(
+    code VARCHAR(3), -- country's code in 3 leters e.g., CAN
+    Name VARCHAR(32), -- country's name e.g., Canada
+	Lat double NOT NULL,
+    Long_ double NOT NULL,
+    Continent VARCHAR(32), -- e.g., North America
+    Region VARCHAR(32), -- e.g., North America
+    SurfaceArea double,
+    IndepYear int,
+    Population int,
+    LifeExpectancy double,
+    GNP int,
+    LocalName VARCHAR(32),
+    GovernmentForm VARCHAR(32),
+    HeadOfState VARCHAR(32),
+    Captital int,
+    Code2 VARCHAR(3),
+    PRIMARY KEY(code)
+);
+```
+* `covid19_global_fact` table:
+
