@@ -27,7 +27,7 @@ This section describe what the final ouputs look like. The visual information wi
 * Dimentional tables: Tables built from transforming raw tables. Names include suffix `_dim`.
 * Fact tables: Tables build from transforming raw tables. Names inculde suffix `_fact`.
 
-## 4. Building the datasets
+## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
 
 ### Covid-19
@@ -41,7 +41,6 @@ In this section, we describle in detail how to get data from datasources.
 * Supported methods: API, csv
 * Frequency: daily
 * Interested features:
-* For each country/area/territory we interested in:
   * Population
   * World bank group (High Income,Upper Middle Income,  Lower Middle Income, Low Income)
   * Total cases
@@ -116,8 +115,38 @@ currentday
 * Supported methods: API, json
 * Frequency: daily
 * We focus on popular stock market in the US such as S&P500, Dow Jones, and Nasdaq
+* `stock_ticker_raw` table:
+
+```sql
+CREATE TABLE IF NOT EXISTS stock_ticker_raw(
+    ticker VARCHAR(16) UNIQUE NOT NULL,
+    name VARCHAR(128), -- full name of the stock ticker
+    industry VARCHAR(64) NULL,
+    subindustry VARCHAR(64) NULL,
+    hq_location VARCHAR(64) NULL,
+    date_first_added datetime NULL,
+    cik VARCHAR(10) NULL, -- A Central Index Key or CIK number
+    founded_year int NULL,
+    PRIMARY KEY(ticker)
+);
+```
+
+* `stock_price_raw` table:
+```sql
+CREATE TABLE IF NOT EXISTS stock_price_raw(
+    stock_ticker VARCHAR(16) NOT NULL,
+    date datetime NOT NULL,
+    High double NOT NULL,
+    Low double NOT NULL,
+    Open double NOT NULL,
+    Close double NOT NULL,
+    Volume double NOT NULL,
+    adj_close double NOT NULL
+);
+```
+
 * How to extract data
-  * First, we get the master list of all stock stickers. That is done by manually input the list or using the API.
+  * First, we get the master list of all stock stickers using the API.
   * Next, for each stock sticker, we get the stock prices data using Yahoo's API. 
   * Extract data into the raw table.
 
@@ -170,7 +199,26 @@ Date          High        Low       Open      Close       Volume     Adj Close
     * Natural Resources, Construction, and Maintenance Occupations: `LNU04032222`
     * Production, Transportation and Material Moving Occupations: `LNU04032226`
 * How to extract data:
-  * First, we build the master list of interested series (e.g., LNS14000000, LNS14000009, LNS14000003, etc). Extract the result in dimentional table.
+  * First, we build the master list of interested series (e.g., LNS14000000, LNS14000009, LNS14000003, etc) and keep the data in `bol_series_dim`.
+```sql
+CREATE TABLE IF NOT EXISTS bol_series_dim(
+    series_id VARCHAR(64) UNIQUE NOT NULL, -- matched with series_id from bol_raw
+    category VARCHAR(256) NOT NULL, -- main category
+    subcat1 VARCHAR(256), -- subcategory 1
+    subcat2 VARCHAR(256), -- subcategory 1
+    PRIMARY KEY(series_id)
+);
+INSERT INTO BOL_series_dim VALUES('LNS14000000', 'Unemployment Rate', 'overall', '');
+INSERT INTO BOL_series_dim VALUES('LNS14000006', 'Unemployment Rate', 'race', 'Black or African American');
+INSERT INTO BOL_series_dim VALUES('LNS14000009', 'Unemployment Rate', 'race', 'Hispanic or Latino');
+INSERT INTO BOL_series_dim VALUES('LNS14000003', 'Unemployment Rate', 'race', 'White');
+INSERT INTO BOL_series_dim VALUES('LNS14000003', 'Unemployment Rate', 'race', 'Asian');
+INSERT INTO BOL_series_dim VALUES('LNU04032215', 'Unemployment Rate', 'occupation', 'Management, Professional, and Related Occupations');
+INSERT INTO BOL_series_dim VALUES('LNU04032218', 'Unemployment Rate', 'occupation', 'Service');
+INSERT INTO BOL_series_dim VALUES('LNU04032219', 'Unemployment Rate', 'occupation', 'Sales and Office Occupations');
+INSERT INTO BOL_series_dim VALUES('LNU04032222', 'Unemployment Rate', 'occupation', 'Natural Resources, Construction, and Maintenance Occupations');
+INSERT INTO BOL_series_dim VALUES('LNU04032226', 'Unemployment Rate', 'occupation', 'Production, Transportation and Material Moving Occupations');
+```
   * Next, for each serie, we extract data from data source using HTTP request.
   * We extract data to raw tables.
 ```python
@@ -257,3 +305,91 @@ SUUR0000SA0.txt
 ### Businesses closed/bankruptcy
 
 ### Healthcare index
+
+## 5. Transform Data
+This stage transform data from the raw tables to our fact and demensional tables.
+
+### Covid-19
+* `country_dim` table: 
+  * Dimentional table keeps general informaiton of countries in the world.
+  * Aggregate data from States/Province of a country (if any)
+  * We buit this table by joining `covid19_global_raw` and `world.country` (provided in MySQL workbench)
+  
+```sql
+CREATE TABLE IF NOT EXISTS country_dim(
+    code VARCHAR(3), -- country's code in 3 leters e.g., CAN
+    Name VARCHAR(32), -- country's name e.g., Canada
+    Lat double NOT NULL,
+    Long_ double NOT NULL,
+    Continent VARCHAR(32), -- e.g., North America
+    Region VARCHAR(32), -- e.g., North America
+    SurfaceArea double,
+    IndepYear int,
+    Population int,
+    LifeExpectancy double,
+    GNP int,
+    LocalName VARCHAR(32),
+    GovernmentForm VARCHAR(32),
+    HeadOfState VARCHAR(32),
+    Captital int,
+    Code2 VARCHAR(3),
+    PRIMARY KEY(code)
+);
+```
+* `covid19_global_fact` table:
+  * Fact table keep series data of covid19 confirmed cases and deaths.
+  * Transformed from raw table `convid19_global_raw`
+  * `dateid` is an interger in format of `yyyymmdd` computed from `date`
+```sql
+CREATE TABLE IF NOT EXISTS covid19_global_fact(
+    dateid bigint NOT NULL,
+    country_code VARCHAR(3) NOT NULL,
+    date datetime NOT NULL,
+    confirmed int NOT NULL,
+    deaths int NOT NULL,
+    
+    PRIMARY KEY(dateid, country_code),
+    FOREIGN KEY (country_code) REFERENCES country_dim(code)
+);
+```
+
+### Stock Prices
+* `stock_price_fact` table: 
+  * Fact table keep series data for ***daily*** stock prices
+  * Remind that we've built `stock_ticker_raw` in the Extract stage. This table use stock_ticker as a foreign key.
+  * `dateid` is an interger in format of `yyyymmdd` computed from `date`
+  ```sql
+  CREATE TABLE IF NOT EXISTS stock_price_fact(
+	   dateid BIGINT NOT NULL, -- number in YYYYmmdd format
+    stock_ticker VARCHAR(16) NOT NULL,
+    date datetime NOT NULL,
+    high double NOT NULL,
+    low double NOT NULL,
+    open double NOT NULL,
+    close double NOT NULL,
+    volume double NOT NULL,
+    adj_close double NOT NULL,
+    
+    PRIMARY KEY(dateid, stock_ticker),
+    FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_raw(ticker)
+  );
+
+  ```
+### Employment / Unemployment rate
+* `bol_series_fact` table:
+  * Fact table keep series data for ***monthly*** statistics feature provided by [U.S Bureau of Labor](https://www.bls.gov/data/)
+  * Transformed from raw table `bol_raw`
+  *  `dateid` is an interger in format of `yyyymmdd` computed from `date`. 
+  * we convert `date` from `bol_raw.year` and `bol_raw.period`. Since the data is monthly published, the day value always show as '01'.
+```sql
+CREATE TABLE IF NOT EXISTS bol_series_fact(
+	   dateid BIGINT NOT NULL, -- id = YYYYMM e.g., 202009 is data for Sep of 2020
+    series_id VARCHAR(64) NOT NULL, -- matched with series_id from raw data
+    date datetime NOT NULL, -- monthly
+    value double,
+    footnotes  varchar(128),
+    PRIMARY KEY(dateid, series_id),
+    
+    FOREIGN KEY(series_id) references BOL_series_dim(series_id)
+);
+```
