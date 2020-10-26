@@ -2,17 +2,18 @@
 DROP TABLE IF EXISTS covid19_global_raw;
 DROP TABLE IF EXISTS covid19_us_raw;
 DROP TABLE IF EXISTS stock_price_raw;
-DROP TABLE IF EXISTS BOL_raw;
+DROP TABLE IF EXISTS bol_raw;
 
 DROP TABLE IF EXISTS covid19_us_fact;
 DROP TABLE IF EXISTS covid19_us_dim;
 DROP TABLE IF EXISTS covid19_global_fact;
 
-DROP TABLE IF EXISTS stock_ticker_dim;
 DROP TABLE IF EXISTS stock_price_fact;
+DROP TABLE IF EXISTS stock_ticker_dim;
 
-DROP TABLE IF EXISTS BOL_series_dim;
-DROP TABLE IF EXISTS BOL_series_fact;
+DROP TABLE IF EXISTS bol_series_fact;
+DROP TABLE IF EXISTS bol_series_dim;
+
 
 /*dimension table used for extracting raw data*/
 CREATE TABLE IF NOT EXISTS covid19_us_raw (
@@ -119,26 +120,37 @@ CREATE TABLE IF NOT EXISTS stock_price_fact(
     FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_dim(ticker)
 );
 
-CREATE TABLE IF NOT EXISTS BOL_raw(
+CREATE TABLE IF NOT EXISTS bol_raw(
     series_id VARCHAR(64) NOT NULL, -- matched with series_id from raw data
     year INT NOT NULL, 
     period VARCHAR(8), -- month
     value double,
     footnotes  varchar(128)
 );
+SELECT COUNT(*) FROM bol_raw WHERE period = 'M01';
 /*dimension table series, translate from series_id to human-reading text
 Each row is an desired feature
 */
-CREATE TABLE IF NOT EXISTS BOL_series_dim(
+CREATE TABLE IF NOT EXISTS bol_series_dim(
     series_id VARCHAR(64) UNIQUE NOT NULL, -- matched with series_id from raw data
-    name VARCHAR(64) NOT NULL, -- the meaning of series_id
+    category VARCHAR(256) NOT NULL, -- main category
+    subcat1 VARCHAR(256), -- subcategory 1
+    subcat2 VARCHAR(256), -- subcategory 1
     PRIMARY KEY(series_id)
 );
-
-
+INSERT INTO BOL_series_dim VALUES('LNS14000000', 'Unemployment Rate', 'overall', '');
+INSERT INTO BOL_series_dim VALUES('LNS14000006', 'Unemployment Rate', 'race', 'Black or African American');
+INSERT INTO BOL_series_dim VALUES('LNS14000009', 'Unemployment Rate', 'race', 'Hispanic or Latino');
+INSERT INTO BOL_series_dim VALUES('LNS14000003', 'Unemployment Rate', 'race', 'White');
+INSERT INTO BOL_series_dim VALUES('LNS14000003', 'Unemployment Rate', 'race', 'Asian');
+INSERT INTO BOL_series_dim VALUES('LNU04032215', 'Unemployment Rate', 'occupation', 'Management, Professional, and Related Occupations');
+INSERT INTO BOL_series_dim VALUES('LNU04032218', 'Unemployment Rate', 'occupation', 'Service');
+INSERT INTO BOL_series_dim VALUES('LNU04032219', 'Unemployment Rate', 'occupation', 'Sales and Office Occupations');
+INSERT INTO BOL_series_dim VALUES('LNU04032222', 'Unemployment Rate', 'occupation', 'Natural Resources, Construction, and Maintenance Occupations');
+INSERT INTO BOL_series_dim VALUES('LNU04032226', 'Unemployment Rate', 'occupation', 'Production, Transportation and Material Moving Occupations');
 
 /*fact table fetching data from data source*/
-CREATE TABLE IF NOT EXISTS BOL_series_fact(
+CREATE TABLE IF NOT EXISTS bol_series_fact(
 	dateid BIGINT NOT NULL, -- id = YYYYMM e.g., 202009 is data for Sep of 2020
     series_id VARCHAR(64) NOT NULL, -- matched with series_id from raw data
     date datetime NOT NULL, -- monthly
