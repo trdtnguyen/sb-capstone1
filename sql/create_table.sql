@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS covid19_us_dim;
 DROP TABLE IF EXISTS covid19_global_fact;
 
 DROP TABLE IF EXISTS stock_price_fact;
-DROP TABLE IF EXISTS stock_ticker_dim;
+DROP TABLE IF EXISTS stock_ticker_raw;
 
 DROP TABLE IF EXISTS bol_series_fact;
 DROP TABLE IF EXISTS bol_series_dim;
@@ -53,15 +53,19 @@ CREATE TABLE IF NOT EXISTS covid19_us_dim(
     iso2 VARCHAR(16) NOT NULL, -- country code 2 letters e.g., US
     iso3 VARCHAR (16) NOT NULL, -- country code 3 letters e.g., USA
     code3 INT NOT NULL, -- area code e.g., 840
-    FIPS double NOT NULL, -- ???
-    Admin2 VARCHAR(32), -- County name e.g., Autauga
+    FIPS double , -- ???
+    Admin2 VARCHAR(128), -- County name e.g., Autauga
     Province_State VARCHAR(32), -- State name e.g., Alabama
     Country_Region VARCHAR(32), -- Country name e.g., US
     Lat double NOT NULL,
     Long_ double NOT NULL,
     Combined_Key VARCHAR(128), -- e.g., Autauga, Alabama, US
+    Population INT,
     PRIMARY KEY (UID)
 );
+SELECT DISTINCT UID, iso2, iso3, code3, FIPS, Admin2, Province_State,
+Country_Region, Lat, Long_, Combined_Key
+FROM covid19_us_raw;
 
 CREATE TABLE IF NOT EXISTS covid19_us_fact (
 	dateid bigint NOT NULL,
@@ -95,13 +99,18 @@ CREATE TABLE IF NOT EXISTS stock_price_raw(
     Volume double NOT NULL,
     adj_close double NOT NULL
 );
-INSERT INTO stock_price_raw VALUES('MMM', '2020-01-01', 10.0, 5.0, 5.0, 10.0, 123, 12);
-INSERT INTO stock_price_raw VALUES('MMA', '2020-01-02', 10.0, 5.0, 5.0, 10.0, 123, 12);
+SELECT COUNT(*) FROM stock_price_raw;
 
-/*dimension table stock, represents for each stock ticker*/
-CREATE TABLE IF NOT EXISTS stock_ticker_dim(
+/*raw table get stickers from datasource*/
+CREATE TABLE IF NOT EXISTS stock_ticker_raw(
     ticker VARCHAR(16) UNIQUE NOT NULL,
-    name VARCHAR(64), -- full name of the stock ticker
+    name VARCHAR(128), -- full name of the stock ticker
+    industry VARCHAR(64) NULL,
+    subindustry VARCHAR(64) NULL,
+    hq_location VARCHAR(64) NULL,
+    date_first_added datetime NULL,
+    cik VARCHAR(10) NULL, -- A Central Index Key or CIK number
+    founded_year int NULL,
     PRIMARY KEY(ticker)
 );
 
@@ -127,7 +136,7 @@ CREATE TABLE IF NOT EXISTS bol_raw(
     value double,
     footnotes  varchar(128)
 );
-SELECT COUNT(*) FROM bol_raw WHERE period = 'M01';
+SELECT * FROM bol_raw;
 /*dimension table series, translate from series_id to human-reading text
 Each row is an desired feature
 */
