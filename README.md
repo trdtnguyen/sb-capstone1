@@ -27,7 +27,7 @@ This section describe what the final ouputs look like. The visual information wi
 * Dimentional tables: Tables built from transforming raw tables. Names include suffix `_dim`.
 * Fact tables: Tables build from transforming raw tables. Names inculde suffix `_fact`.
 
-## 4. Building the datasets
+## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
 
 ### Covid-19
@@ -354,4 +354,42 @@ CREATE TABLE IF NOT EXISTS covid19_global_fact(
 ```
 
 ### Stock Prices
-* `country_dim` table:
+* `stock_price_fact` table: 
+  * Fact table keep series data for ***daily*** stock prices
+  * Remind that we've built `stock_ticker_raw` in the Extract stage. This table use stock_ticker as a foreign key.
+  * `dateid` is an interger in format of `yyyymmdd` computed from `date`
+  ```sql
+  CREATE TABLE IF NOT EXISTS stock_price_fact(
+	   dateid BIGINT NOT NULL, -- number in YYYYmmdd format
+    stock_ticker VARCHAR(16) NOT NULL,
+    date datetime NOT NULL,
+    high double NOT NULL,
+    low double NOT NULL,
+    open double NOT NULL,
+    close double NOT NULL,
+    volume double NOT NULL,
+    adj_close double NOT NULL,
+    
+    PRIMARY KEY(dateid, stock_ticker),
+    FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_raw(ticker)
+  );
+
+  ```
+### Employment / Unemployment rate
+* `bol_series_fact` table:
+  * Fact table keep series data for ***monthly*** statistics feature provided by [U.S Bureau of Labor](https://www.bls.gov/data/)
+  * Transformed from raw table `bol_raw`
+  *  `dateid` is an interger in format of `yyyymmdd` computed from `date`. 
+  * we convert `date` from `bol_raw.year` and `bol_raw.period`. Since the data is monthly published, the day value always show as '01'.
+```sql
+CREATE TABLE IF NOT EXISTS bol_series_fact(
+	   dateid BIGINT NOT NULL, -- id = YYYYMM e.g., 202009 is data for Sep of 2020
+    series_id VARCHAR(64) NOT NULL, -- matched with series_id from raw data
+    date datetime NOT NULL, -- monthly
+    value double,
+    footnotes  varchar(128),
+    PRIMARY KEY(dateid, series_id),
+    
+    FOREIGN KEY(series_id) references BOL_series_dim(series_id)
+);
+```
