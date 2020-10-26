@@ -27,10 +27,13 @@ This section describe what the final ouputs look like. The visual information wi
 * Dimentional tables: Tables built from transforming raw tables. Names include suffix `_dim`.
 * Fact tables: Tables build from transforming raw tables. Names inculde suffix `_fact`.
 
-Table             | Rows     | Columns | AVG row length | Table size | Period                     | Description
-------------------|----------|---------|----------------|------------|----------------------------|-------------
-`covid19_us_raw`  |927,708   | 15      |139             | 123.7 MiB  |2020.01.22 - 2020.10.25     | Dim table for countries
-`country_dim`     |165       | 16      |397             | 64 KiB     |N/A                         | Dim table for countries
+Table                 | Rows     | Columns | AVG row length | Table size | Period                     | Description
+----------------------|----------|---------|----------------|------------|----------------------------|-------------
+`covid19_us_raw`      |927,708   | 15      |139             | 123.7 MiB  |2020.01.22 - 2020.10.25     | Raw table for covid19 in the US
+`covid19_global_raw`  | 73,482   | 7       |78              |   5.5 MiB  |2020.01.22 - 2020.10.25     | Raw table for covid19 in the global
+`covid19_us_dim`      |  3,221   | 12      |152             | 480 KiB    |2020.01.22 - 2020.10.25     | Dim table for covid19 in the US
+`covid19_us_fact`     |  3,221   | 12      |152             | 480 KiB    |2020.01.22 - 2020.10.25     | Dim table for covid19 in the US
+`country_dim`         |165       | 16      |397             |  64 KiB    |N/A                         | Dim table for countries
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
