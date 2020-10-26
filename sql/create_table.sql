@@ -1,19 +1,17 @@
-
-DROP TABLE IF EXISTS covid19_global_raw;
-DROP TABLE IF EXISTS covid19_us_raw;
-DROP TABLE IF EXISTS stock_price_raw;
-DROP TABLE IF EXISTS bol_raw;
-
 DROP TABLE IF EXISTS covid19_us_fact;
 DROP TABLE IF EXISTS covid19_us_dim;
 DROP TABLE IF EXISTS covid19_global_fact;
+DROP TABLE IF EXISTS country_dim;
+DROP TABLE IF EXISTS covid19_global_raw;
+DROP TABLE IF EXISTS covid19_us_raw;
 
 DROP TABLE IF EXISTS stock_price_fact;
 DROP TABLE IF EXISTS stock_ticker_raw;
+DROP TABLE IF EXISTS stock_price_raw;
 
 DROP TABLE IF EXISTS bol_series_fact;
 DROP TABLE IF EXISTS bol_series_dim;
-
+DROP TABLE IF EXISTS bol_raw;
 
 /*dimension table used for extracting raw data*/
 CREATE TABLE IF NOT EXISTS covid19_us_raw (
@@ -63,9 +61,6 @@ CREATE TABLE IF NOT EXISTS covid19_us_dim(
     Population INT,
     PRIMARY KEY (UID)
 );
-SELECT DISTINCT UID, iso2, iso3, code3, FIPS, Admin2, Province_State,
-Country_Region, Lat, Long_, Combined_Key
-FROM covid19_us_raw;
 
 CREATE TABLE IF NOT EXISTS covid19_us_fact (
 	dateid bigint NOT NULL,
@@ -78,16 +73,36 @@ CREATE TABLE IF NOT EXISTS covid19_us_fact (
     FOREIGN KEY(UID) REFERENCES covid19_us_dim(UID)
 );
 
+CREATE TABLE IF NOT EXISTS country_dim(
+    code VARCHAR(3), -- country's code in 3 leters e.g., CAN
+    Name VARCHAR(32), -- country's name e.g., Canada
+	Lat double NOT NULL,
+    Long_ double NOT NULL,
+    Continent VARCHAR(32), -- e.g., North America
+    Region VARCHAR(32), -- e.g., North America
+    SurfaceArea double,
+    IndepYear int,
+    Population int,
+    LifeExpectancy double,
+    GNP int,
+    LocalName VARCHAR(32),
+    GovernmentForm VARCHAR(32),
+    HeadOfState VARCHAR(32),
+    Captital int,
+    Code2 VARCHAR(3),
+    PRIMARY KEY(code)
+);
 CREATE TABLE IF NOT EXISTS covid19_global_fact(
     dateid bigint NOT NULL,
-    Province_State VARCHAR(32),
-    Country_Region VARCHAR(64), -- country 
+    country_code VARCHAR(3) NOT NULL,
     date datetime NOT NULL,
     confirmed int NOT NULL,
     deaths int NOT NULL,
     
-    PRIMARY KEY(dateid, Country_Region)
+    PRIMARY KEY(dateid, country_code),
+    FOREIGN KEY (country_code) REFERENCES country_dim(code)
 );
+
 
 CREATE TABLE IF NOT EXISTS stock_price_raw(
     stock_ticker VARCHAR(16) NOT NULL,
@@ -99,7 +114,7 @@ CREATE TABLE IF NOT EXISTS stock_price_raw(
     Volume double NOT NULL,
     adj_close double NOT NULL
 );
-SELECT COUNT(*) FROM stock_price_raw;
+
 
 /*raw table get stickers from datasource*/
 CREATE TABLE IF NOT EXISTS stock_ticker_raw(
@@ -126,7 +141,7 @@ CREATE TABLE IF NOT EXISTS stock_price_fact(
     adj_close double NOT NULL,
     
     PRIMARY KEY(dateid, stock_ticker),
-    FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_dim(ticker)
+    FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_raw(ticker)
 );
 
 CREATE TABLE IF NOT EXISTS bol_raw(
@@ -136,12 +151,12 @@ CREATE TABLE IF NOT EXISTS bol_raw(
     value double,
     footnotes  varchar(128)
 );
-SELECT * FROM bol_raw;
+
 /*dimension table series, translate from series_id to human-reading text
 Each row is an desired feature
 */
 CREATE TABLE IF NOT EXISTS bol_series_dim(
-    series_id VARCHAR(64) UNIQUE NOT NULL, -- matched with series_id from raw data
+    series_id VARCHAR(64) UNIQUE NOT NULL, -- matched with series_id from bol_raw
     category VARCHAR(256) NOT NULL, -- main category
     subcat1 VARCHAR(256), -- subcategory 1
     subcat2 VARCHAR(256), -- subcategory 1
@@ -167,7 +182,7 @@ CREATE TABLE IF NOT EXISTS bol_series_fact(
     footnotes  varchar(128),
     PRIMARY KEY(dateid, series_id),
     
-    FOREIGN KEY(series_id) references BOL_series_dim(series_id)
+    FOREIGN KEY(series_id) references bol_series_dim(series_id)
 );
 
 
