@@ -315,6 +315,7 @@ SUUR0000SA0.txt
 * [Air Carriers : T-100 Domestic Segment (U.S. Carriers)](https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=259) (Latest Available Data: July 2020)
 ### Environment:
 * [National Center for Environmental Information](https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation)
+* [AirNow Web service](https://docs.airnowapi.org/webservices): Get daily air quality index
 ### Businesses closed/bankruptcy
 
 ### Healthcare index
