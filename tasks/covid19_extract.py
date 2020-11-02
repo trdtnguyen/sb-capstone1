@@ -9,6 +9,8 @@ from db.DB import DB
 import configparser
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy import Table, select, update, insert
+from datetime import timedelta, datetime
+
 
 confirmed_cases_US_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv'
 death_US_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv'
@@ -23,42 +25,27 @@ death_global_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/ma
 
 def convert_date(in_date):
     d_list = in_date.split('/')
-    out_date = '20' + d_list[2] + '-' + d_list[0] + '-' + d_list[1]
+    year = int('20' + d_list[2])
+    month = int(d_list[0])
+    day = int(d_list[1])
+    #out_date = '20' + d_list[2] + '-' + d_list[0] + '-' + d_list[1]
+    out_date = datetime(year, month, day)
+
 
     return out_date
 
 
 def extract_us(conn, logger):
-    # insert_list = [{'UID': 84001001, 'iso2': 'US', 'iso3': 'USA', 'code3': 840, 'FIPS': 1001.0, 'Admin2': 'Autauga',
-    #                 'Province_State': 'Alabama', 'Country_Region': 'US', 'Lat': 32.53952745, 'Long_': -86.64408227,
-    #                 'Combined_Key': 'Autauga, Alabama, US', 'date': '2020-10-18', 'confirmed': 1989, 'deaths': 0},
-    #                {'UID': 84001003, 'iso2': 'US', 'iso3': 'USA', 'code3': 840, 'FIPS': 1003.0, 'Admin2': 'Baldwin',
-    #                 'Province_State': 'Alabama', 'Country_Region': 'US', 'Lat': 30.72774991, 'Long_': -87.72207058,
-    #                 'Combined_Key': 'Baldwin, Alabama, US', 'date': '2020-10-18', 'confirmed': 6369, 'deaths': 0}]
-    # try:
-    #
-    #     results = conn.execute(table.insert(), insert_list)
-    #     print(f'{results.rowcount} rows inserted')
-    # except DBAPIError:
-    #     logger.error('Error Query')
+    RAW_TABLE_NAME = 'covid19_us_raw'
+    DIM_TABLE_NAME = 'covid19_us_dim'
 
+    print("Extract data from data sources ...")
     confirmed_us_df = pd.read_csv(confirmed_cases_US_url)
     death_us_df = pd.read_csv(death_US_url)
 
     total_cols = confirmed_us_df.shape[1]
     total_rows = confirmed_us_df.shape[0]
-
-    # print('Confirmed cases in US info:')
-    # print(confirmed_us_df.shape)
-    # print(confirmed_us_df.head(10))
-    # for col in confirmed_us_df.columns:
-    #     print(col)
-    #
-    # print ('Death cases in US info:')
-    # print(death_us_df.shape)
-    # print(death_us_df.head(10))
-    # for col in death_us_df.columns:
-    #     print (col)
+    print(f'Data source Dataframe has {total_rows} rows and {total_cols} cols')
 
     COL_NAMES = ['UID', 'iso2', 'iso3', 'code3', 'FIPS',
                  'Admin2', 'Province_State', 'Country_Region',
@@ -67,11 +54,13 @@ def extract_us(conn, logger):
     date_col = 12  # the index of date column
 
     insert_list = []
-    print("Extract data from data sources ...")
+    dim_insert_list = []
+
     # for i in range(total_rows):
     # for i, row in confirmed_us_df.iterrows():
     print('Extract confirms values from confirmed_us_df ...', end=' ')
     confirm_2d = []
+
     for i, row in confirmed_us_df.iterrows():
         # Note that confirmed_us_df has less then death_us_df one column i.e., Population.
         # So we subtract 1 to get the correct column
@@ -100,56 +89,55 @@ def extract_us(conn, logger):
         insert_val['Combined_Key'] = row['Combined_Key']
         insert_val['Population'] = row['Population']
 
-        # for coln in range(date_col):
-        #     insert_val[COL_NAMES[coln]] = confirmed_us_df.iloc[i][COL_NAMES[coln]]
+        copy_insert_val = insert_val.copy()
+        dim_insert_list.append(copy_insert_val)
 
         # Get date columns from date_col to the last column
         for j in range(date_col, death_us_df.shape[1]):
+            insert_val2 = insert_val.copy() #reset the insert_val2 using shallow copy
             date = death_us_df.columns[j]
             date = convert_date(date)
             death_num = row[j]
             # confirm_num = confirmed_us_df.iloc[i][j-1] # this is slow
             confirm_num = confirm_2d[i][j - date_col]
-            insert_val['date'] = date
-            insert_val['confirmed'] = int(confirm_num)
-            insert_val['deaths'] = int(death_num)
+            insert_val2['date'] = date
+            insert_val2['confirmed'] = int(confirm_num)
+            insert_val2['deaths'] = int(death_num)
 
-        insert_list.append(insert_val)
+            insert_list.append(insert_val2)
+
+    print("Extract data Done.")
+    print(f'dim_insert_list len: {len(dim_insert_list)}')
+    print(f'insert_list len: {len(insert_list)}')
+
+    print(f"Insert to database for table {DIM_TABLE_NAME}...", end=' ')
+    df = pd.DataFrame(dim_insert_list)
+    try:
+        df.to_sql(DIM_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+    except ValueError:
+        logger.error(f'Error Query when extracting data for {DIM_TABLE_NAME} table')
+    print('Done.')
 
     df = pd.DataFrame(insert_list)
 
-    # print(df)
-    print("Extract data Done.")
-    print("Insert to database...", end=' ')
-    # insert database
-    # to_sql(name, con, schema=None, if_exists='fail', index=True, index_label=None, chunksize=None, dtype=None, method=None)[source]
+    print(f"Insert to database for table {RAW_TABLE_NAME}...", end=' ')
     try:
-        df.to_sql('covid19_us_raw', conn, schema=None, if_exists='append', index=False)
+        df.to_sql(RAW_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
         # manually insert a dictionary will not work due to the limitation number of records insert
         # results = conn.execute(table.insert(), insert_list)
     except ValueError:
-        logger.error('Error Query when extracting data for covid19_us_raw table')
+        logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
     print('Done.')
 
 
 def extract_global(conn, logger):
+    RAW_TABLE_NAME = 'covid19_global_raw'
     confirmed_global_df = pd.read_csv(confirmed_case_global_url)
     death_global_df = pd.read_csv(death_global_url)
 
     total_cols = confirmed_global_df.shape[1]
     total_rows = confirmed_global_df.shape[0]
-
-    # print('Confirmed cases in US info:')
-    # print(confirmed_global_df.shape)
-    # print(confirmed_global_df.head(10))
-    # for col in confirmed_global_df.columns:
-    #     print(col)
-    #
-    # print ('Death cases in US info:')
-    # print(death_global_df.shape)
-    # print(death_global_df.head(10))
-    # for col in death_global_df.columns:
-    #     print (col)
+    print(f'Data source Dataframe has {total_rows} rows and {total_cols} cols')
 
     COL_NAMES = ['Province_State', 'Country_Region', 'Lat', 'Long_'
                                                             'date', 'confirmed', 'deaths']
@@ -177,30 +165,31 @@ def extract_global(conn, logger):
 
         # Get date columns from date_col to the last column
         for j in range(date_col, death_global_df.shape[1]):
+            insert_val2 = insert_val.copy() #reset insert_val2
             date = death_global_df.columns[j]
             date = convert_date(date)
             death_num = row[j]
             # confirm_num = confirmed_us_df.iloc[i][j-1] # this is slow
             confirm_num = confirm_2d[i][j - date_col]
-            insert_val['date'] = date
-            insert_val['confirmed'] = int(confirm_num)
-            insert_val['deaths'] = int(death_num)
+            insert_val2['date'] = date
+            insert_val2['confirmed'] = int(confirm_num)
+            insert_val2['deaths'] = int(death_num)
 
-        insert_list.append(insert_val)
+            insert_list.append(insert_val2)
 
     df = pd.DataFrame(insert_list)
 
-    print(df)
     print("Extract data Done.")
+    print(f'insert_list len: {len(insert_list)}')
     print("Insert to database...", end=' ')
     # insert database
     # to_sql(name, con, schema=None, if_exists='fail', index=True, index_label=None, chunksize=None, dtype=None, method=None)[source]
     try:
-        df.to_sql('covid19_global_raw', conn, schema=None, if_exists='append', index=False)
+        df.to_sql(RAW_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
         # manually insert a dictionary will not work due to the limitation number of records insert
         # results = conn.execute(table.insert(), insert_list)
     except ValueError:
-        logger.error('Error Query when extracting data for covid19_global_raw table')
+        logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
     print('Done.')
 
 
@@ -218,5 +207,5 @@ table = db.get_table('covid19_us_raw')
 conn = db.get_conn()
 logger = db.get_logger()
 
-# extract_us(conn, logger)
+#extract_us(conn, logger)
 extract_global(conn, logger)
