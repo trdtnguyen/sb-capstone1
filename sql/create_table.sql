@@ -216,6 +216,25 @@ CREATE TABLE IF NOT EXISTS stock_price_fact(
     FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_raw(ticker)
 );
 
+CREATE TABLE IF NOT EXISTS stock_price_monthly_fact(
+	dateid BIGINT NOT NULL, -- number in YYYYmmdd format
+    stock_ticker VARCHAR(16) NOT NULL,
+    date datetime NOT NULL,
+    year int NOT NULL,
+    month int NOT NULL,
+    month_name VARCHAR(32),
+    
+    High double NOT NULL,
+    Low double NOT NULL,
+    Open double NOT NULL,
+    Close double NOT NULL,
+    Volume double NOT NULL,
+    adj_close double NOT NULL,
+    
+    PRIMARY KEY(dateid, stock_ticker),
+    FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_raw(ticker)
+);
+
 CREATE TABLE IF NOT EXISTS bol_raw(
     series_id VARCHAR(64) NOT NULL, -- matched with series_id from raw data
     year INT NOT NULL, 
