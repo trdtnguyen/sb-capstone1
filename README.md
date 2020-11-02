@@ -29,11 +29,14 @@ This section describe what the final ouputs look like. The visual information wi
 
 Table                 | Rows     | Columns | AVG row length | Table size | Period                     | Description
 ----------------------|----------|---------|----------------|------------|----------------------------|-------------
-`covid19_us_raw`      |927,708   | 15      |139             | 123.7 MiB  |2020.01.22 - 2020.10.25     | Raw table for covid19 in the US
-`covid19_global_raw`  | 73,482   | 7       |78              |   5.5 MiB  |2020.01.22 - 2020.10.25     | Raw table for covid19 in the global
-`covid19_us_dim`      |  3,221   | 12      |152             | 480 KiB    |2020.01.22 - 2020.10.25     | Dim table for covid19 in the US
-`covid19_us_fact`     |  3,221   | 12      |152              | 480 KiB    |2020.01.22 - 2020.10.25     | Dim table for covid19 in the US
-`country_dim`         |165       | 16      |397             |  64 KiB    |N/A                         | Dim table for countries
+`covid19_us_raw`      |928,520   | 15      |139             | 123.7 MiB  |2020.01.22 - 2020.11.01     | Raw table for covid19 in the US
+`covid19_us_dim`      |  3,340   | 12      |152             | 480 KiB    |2020.01.22 - 2020.11.01     | Dim table for covid19 in the US
+`covid19_us_fact`     |  928,520   | 12      |152              | 480 KiB    |2020.01.22 - 2020.11.01     | Fact table for covid19 in the US
+`covid19_us_monthly_fact`     |  33,400   | 12      |152              | 480 KiB    |2020.01.22 - 2020.11.01     | Fact table for covid19 in the US (aggregate monthly)
+`covid19_global_raw`  | 76,112   | 7       |78              |   5.5 MiB  |2020.01.22 - 2020.11.01     | Raw table for covid19 in the global
+`country_dim`         |166       | 16      |397             |  64 KiB    |N/A                         | Dim table for countries
+`covid19_global_fact`  |47,144       | 5      |80             |  5 MiB    |N/A                         | Fact table for global
+`covid19_global_monthly_fact`  |1660       | 5      |80             |  5 MiB    |N/A                         | Fact table for global (aggregate monthly)
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
