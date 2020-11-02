@@ -311,7 +311,8 @@ SUUR0000SA0.txt
 +-------------+------+--------+---------+-----------+
 ```
 ### Transportation
-* [Intermodal Passenger Connectivity Database IPCD](https://data-usdot.opendata.arcgis.com/datasets/intermodal-passenger-connectivity-database-ipcd/data)
+* [Air Carrier Statistics (Form 41 Traffic)- U.S. Carriers](https://www.transtats.bts.gov/Tables.asp?DB_ID=110&DB_Name=Air%20Carrier%20Statistics%20%28Form%2041%20Traffic%29-%20%20U.S.%20Carriers&DB_Short_Name=Air%20Carriers)
+* [Air Carriers : T-100 Domestic Segment (U.S. Carriers)](https://www.transtats.bts.gov/DL_SelectFields.asp?Table_ID=259) (Latest Available Data: July 2020)
 ### Environment:
 * [National Center for Environmental Information](https://www.ncei.noaa.gov/support/access-data-service-api-user-documentation)
 ### Businesses closed/bankruptcy
