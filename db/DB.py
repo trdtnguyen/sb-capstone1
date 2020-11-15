@@ -7,6 +7,7 @@ __author__ = 'Dat Nguyen'
 from sqlalchemy import insert, select, create_engine, MetaData, Table
 import logging
 import logging.config
+from os import environ as env
 
 
 from sqlalchemy.exc import DBAPIError
@@ -20,7 +21,7 @@ class DB:
     Args:
         str_connection: string connection
     """
-    def __init__(self, str_connection = 'mysql+pymysql://root:12345678@localhost/bank'):
+    def __init__(self, str_connection):
         #logging.config.fileConfig(fname='../log.conf')
         logging.basicConfig(filename='test.log', format='%(asctime)s  %(name)s  %(levelname)s: %(message)s',
                             level=logging.DEBUG)

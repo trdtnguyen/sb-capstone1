@@ -10,18 +10,17 @@ import configparser
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy import Table, select, update, insert
 from datetime import timedelta, datetime
+from os import environment as env
 
+confirmed_cases_US_url = env.get('COVID19_CONFRIMDED_US_URL')
+death_US_url = env.get('COVID19_DEATH_US_URL')
 
-confirmed_cases_US_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv'
-death_US_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv'
-
-confirmed_case_global_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv'
-death_global_url = 'https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv'
+confirmed_case_global_url = env.get('COVID19_CONFIRMED_GLOBAL_URL')
+death_global_url = env.get('COVID19_DEATH_GLOBAL_URL')
 
 """
 10/18/20 -> 2020-10-18
 """
-
 
 def convert_date(in_date):
     d_list = in_date.split('/')
@@ -198,8 +197,8 @@ config = configparser.ConfigParser()
 config.read('../config.cnf')
 # str_conn  = 'mysql+pymysql://root:12345678@localhost/bank'
 str_conn = 'mysql+pymysql://'
-str_conn += config['DATABASE']['user'] + ':' + config['DATABASE']['pw'] + \
-            '@' + config['DATABASE']['host'] + '/' + config['DATABASE']['db_name']
+str_conn += config['DATABASE']['MYSQL_USER'] + ':' + config['DATABASE']['MYSQL_PASSWORD'] + \
+            '@' + config['DATABASE']['MYSQL_HOST'] + '/' + config['DATABASE']['MYSQL_DATABASE']
 print(str_conn)
 db = DB(str_conn)
 

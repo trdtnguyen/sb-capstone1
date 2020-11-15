@@ -48,11 +48,6 @@ CREATE TABLE IF NOT EXISTS covid19_global_raw(
     confirmed int NOT NULL,
     deaths int NOT NULL
 );
-SELECT Country_Region, date, SUM(confirmed), SUM(deaths)
-FROM covid19_global_raw
-GROUP BY Country_Region, date
-ORDER BY Country_Region
-;
 
 CREATE TABLE IF NOT EXISTS covid19_us_dim(
 	UID bigint NOT NULL,
@@ -80,10 +75,6 @@ CREATE TABLE IF NOT EXISTS covid19_us_fact (
     PRIMARY KEY(dateid, UID),
     FOREIGN KEY(UID) REFERENCES covid19_us_dim(UID)
 );
-SELECT UID, YEAR(date), MONTH(date), MONTHNAME(date), SUM(confirmed) , SUM(deaths)
-FROM covid19_us_fact
-GROUP BY UID, YEAR(date), MONTH(date), MONTHNAME(date)
-ORDER BY 2, 3 DESC;
 
 CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
 	dateid bigint NOT NULL,
@@ -118,33 +109,6 @@ CREATE TABLE IF NOT EXISTS country_dim(
     Code2 VARCHAR(3),
     PRIMARY KEY(code)
 );
-SELECT DISTINCT name 
-FROM world.country, covid19_global_raw
-WHERE world.country.name = covid19_global_raw.Country_Region
-ORDER BY name
-;
-
-SELECT DISTINCT code, Name, Lat, Long_, Continent, Region, SurfaceArea, IndepYear, Population,
-LifeExpectancy, GNP, LocalName, GovernmentForm, HeadOfState, Capital, Code2 
-FROM world.country INNER JOIN covid19_global_raw ON
-world.country.name = covid19_global_raw.Country_Region
-GROUP BY code
-;
-
-SELECT Country_Region, date, SUM(confirmed), SUM(deaths)
-FROM covid19_global_raw
-WHERE Country_Region = 'Canada'
-GROUP BY Country_Region, date
-ORDER BY Country_Region
-;
-
-SELECT DISTINCT code, Country_Region, date, SUM(confirmed), SUM(deaths)
-FROM  country_dim, covid19_global_raw
-WHERE country_dim.Name = covid19_global_raw.Country_Region
-AND Country_Region = 'Canada'
-GROUP BY Country_Region, date
-ORDER BY code;
-
 
 CREATE TABLE IF NOT EXISTS covid19_global_fact(
     dateid bigint NOT NULL,
@@ -156,10 +120,6 @@ CREATE TABLE IF NOT EXISTS covid19_global_fact(
     PRIMARY KEY(dateid, country_code),
     FOREIGN KEY (country_code) REFERENCES country_dim(code)
 );
-SELECT country_code, YEAR(date), MONTH(date), MONTHNAME(date), SUM(confirmed) , SUM(deaths)
-FROM covid19_global_fact
-GROUP BY country_code, YEAR(date), MONTH(date), MONTHNAME(date)
-ORDER BY 2, 3 DESC;
 
 CREATE TABLE IF NOT EXISTS covid19_global_monthly_fact(
     dateid bigint NOT NULL,
