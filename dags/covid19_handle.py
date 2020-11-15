@@ -4,7 +4,7 @@ from airflow.operators.python_operator import PythonOperator
 from datetime import datetime
 from datetime import timedelta
 
-from tasks import covid19_extract
+from tasks import Covid
 from tasks import covid19_transform
 
 WORKFLOW_DAG_ID = 'covid19_handle'
@@ -33,7 +33,7 @@ dag = DAG(
 
 t1 = PythonOperator(
         task_id='extract_us',
-        python_callable=covid19_extract.extract_us,
+        python_callable=Covid.extract_us,
         op_kwargs={'param1': 'value'},
         dag=dag,
 )
