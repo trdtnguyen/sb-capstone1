@@ -7,10 +7,22 @@ try:
                                          host=env.get('MYSQL_HOST'),
                                          port=env.get('MYSQL_PORT'),
                                          database=env.get('MYSQL_DATABASE'))
-    print('setup db...')
+    print('create tables...')
     cursor = connection.cursor()
+
     sql_cmd =""
     with open('sql/create_table.sql') as f:
+        lines = f.readlines()
+        for line in lines:
+            sql_cmd = sql_cmd + " " + line
+            if ';' in line:
+                print(f'execute sql_cmd: {sql_cmd}')
+                cursor.execute(sql_cmd)
+                sql_cmd = ""
+
+    print('inserta data onto tables...')
+    sql_cmd =""
+    with open('sql/insert_table.sql') as f:
         lines = f.readlines()
         for line in lines:
             sql_cmd = sql_cmd + " " + line

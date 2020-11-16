@@ -213,16 +213,6 @@ CREATE TABLE IF NOT EXISTS bol_series_dim(
     subcat2 VARCHAR(256), -- subcategory 1
     PRIMARY KEY(series_id)
 );
-INSERT INTO BOL_series_dim VALUES('LNS14000000', 'Unemployment Rate', 'overall', '');
-INSERT INTO BOL_series_dim VALUES('LNS14000006', 'Unemployment Rate', 'race', 'Black or African American');
-INSERT INTO BOL_series_dim VALUES('LNS14000009', 'Unemployment Rate', 'race', 'Hispanic or Latino');
-INSERT INTO BOL_series_dim VALUES('LNS14000003', 'Unemployment Rate', 'race', 'White');
-INSERT INTO BOL_series_dim VALUES('LNS14000003', 'Unemployment Rate', 'race', 'Asian');
-INSERT INTO BOL_series_dim VALUES('LNU04032215', 'Unemployment Rate', 'occupation', 'Management, Professional, and Related Occupations');
-INSERT INTO BOL_series_dim VALUES('LNU04032218', 'Unemployment Rate', 'occupation', 'Service');
-INSERT INTO BOL_series_dim VALUES('LNU04032219', 'Unemployment Rate', 'occupation', 'Sales and Office Occupations');
-INSERT INTO BOL_series_dim VALUES('LNU04032222', 'Unemployment Rate', 'occupation', 'Natural Resources, Construction, and Maintenance Occupations');
-INSERT INTO BOL_series_dim VALUES('LNU04032226', 'Unemployment Rate', 'occupation', 'Production, Transportation and Material Moving Occupations');
 
 /*fact table fetching data from data source*/
 CREATE TABLE IF NOT EXISTS bol_series_fact(

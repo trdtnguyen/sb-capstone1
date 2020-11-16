@@ -36,10 +36,10 @@ class DB:
             self.metadata = MetaData()
 
             # Make the list of tables
-            self.table_list = [Table(name, self.metadata, autoload=True, autoload_with=self.engine) for name in DB.TB_NAMES]
+            #self.table_list = [Table(name, self.metadata, autoload=True, autoload_with=self.engine) for name in DB.TB_NAMES]
 
             # Combine (name:table) pair in to dictionary
-            self.table_dict = {DB.TB_NAMES[i]: tb for i, tb in enumerate(self.table_list)}
+            #self.table_dict = {DB.TB_NAMES[i]: tb for i, tb in enumerate(self.table_list)}
         except DBAPIError as e:
             self.logger.error(f'Cannot connect to database using connection string {self.str_connection}')
             self.connection = None

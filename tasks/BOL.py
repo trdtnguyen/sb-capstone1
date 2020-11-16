@@ -5,8 +5,7 @@ from sqlalchemy.sql import text
 
 import requests
 import json
-import prettytable
-from os import environment as env
+from os import environ as env
 from datetime import timedelta, datetime
 import pymysql
 
@@ -19,7 +18,7 @@ period: month period is a value of M01, M02, ...,M12
 """
 def BOL_period_to_date(year, period):
     str_m = period[1:3]
-    date = datetime(year, int(str_m),1)
+    date = datetime(year, int(str_m), 1)
     return date
 
 

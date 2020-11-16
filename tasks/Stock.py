@@ -13,7 +13,7 @@ from sqlalchemy.sql import text
 
 from datetime import timedelta, datetime
 import pymysql
-from os import environment as env
+from os import environ as env
 
 import pickle
 import requests
@@ -43,7 +43,7 @@ class Stock:
 
         config = configparser.ConfigParser()
         # config.read('config.cnf')
-        config.read('../config.cnf')
+        config.read('/root/airflow/config.cnf')
         # str_conn  = 'mysql+pymysql://root:12345678@localhost/bank'
         str_conn = f'mysql+pymysql://{user}:{pw}@{host}/{db_name}'
         self.db = DB(str_conn)
@@ -59,7 +59,13 @@ class Stock:
         logger = self.logger
 
         TABLE_NAME = 'stock_ticker_raw'
-        resp = requests.get('http://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+
+        config = configparser.ConfigParser()
+        config.read('/root/airflow/config.cnf')
+        url = config['STOCK']['STOCK_SP500_URL']
+
+        #resp = requests.get('http://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
+        resp = requests.get(url)
         soup = bs.BeautifulSoup(resp.text, 'lxml')
         table = soup.find('table', {'class': 'wikitable sortable'})
         tickers = []
@@ -282,7 +288,7 @@ class Stock:
     """
     Dependencies:
         extract_sp500_tickers ->
-        extract_batch_stock() -> 
+        extract_batch_stock() ->
         transform_raw_to_fact_stock() ->
         aggregate_fact_to_monthly_fact_stock
     """
@@ -343,9 +349,9 @@ class Stock:
     """
     Dependencies:
         extract_sp500_tickers ->
-        extract_batch_stock() -> 
+        extract_batch_stock() ->
         transform_raw_to_fact_stock()
-    
+
     """
 
 

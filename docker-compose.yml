@@ -1,14 +1,14 @@
 services:
     db:
         image: mysql:latest
-        countainer_name: mysql_db
+        container_name: mysql_db
         command: '--default-authentication-plugin=mysql_native_password'
         restart: always
         hostname: mysql_db
         ports:
             - "3037:3036"
         env_file:
-            - mysql.env
+            - config.cnf
         tty: true
         networks:
             - mynet
@@ -17,7 +17,7 @@ services:
     airflow-engine:
         build: .
         container_name: airflow
-        command:
+        command: /bin/sh -c "/root/airflow/setup.sh"
         depends_on:
             - db
         init: true
@@ -26,7 +26,7 @@ services:
         environment:
             - PYTHONPATH=/root/airflow
         env_file:
-            - mysql.env
+            - config.cnf
         tty: true
         networks:
             - mynet

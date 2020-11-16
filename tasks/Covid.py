@@ -10,11 +10,11 @@ import configparser
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy import Table, select, update, insert
 from datetime import timedelta, datetime
-from os import environment as env
+from os import environ as env
 import pymysql
 from sqlalchemy.sql import text
 
-confirmed_cases_US_url = env.get('COVID19_CONFRIMDED_US_URL')
+confirmed_cases_US_url = env.get('COVID19_CONFIRMDED_US_URL')
 death_US_url = env.get('COVID19_DEATH_US_URL')
 
 confirmed_case_global_url = env.get('COVID19_CONFIRMED_GLOBAL_URL')
@@ -25,7 +25,7 @@ death_global_url = env.get('COVID19_DEATH_GLOBAL_URL')
 """
 
 
-def convert_date(self, in_date):
+def convert_date(in_date):
     d_list = in_date.split('/')
     year = int('20' + d_list[2])
     month = int(d_list[0])
@@ -44,11 +44,9 @@ class Covid:
         pw = env.get('MYSQL_PASSWORD')
         host = env.get('MYSQL_HOST')
 
-        config = configparser.ConfigParser()
-        # config.read('config.cnf')
-        config.read('../config.cnf')
         # str_conn  = 'mysql+pymysql://root:12345678@localhost/bank'
         str_conn = f'mysql+pymysql://{user}:{pw}@{host}/{db_name}'
+        print ('Connect string in constructor: ', str_conn)
         self.db = DB(str_conn)
         self.conn = self.db.get_conn()
         self.logger = self.db.get_logger()
@@ -61,9 +59,13 @@ class Covid:
         RAW_TABLE_NAME = 'covid19_us_raw'
         DIM_TABLE_NAME = 'covid19_us_dim'
 
-        print("Extract data from data sources ...")
-        confirmed_us_df = pd.read_csv(confirmed_cases_US_url)
-        death_us_df = pd.read_csv(death_US_url)
+        config = configparser.ConfigParser()
+        config.read('/root/airflow/config.cnf')
+        url1 = config['COVID19']['COVID19_CONFIRMED_US_URL']
+        confirmed_us_df = pd.read_csv(url1)
+
+        url2 = config['COVID19']['COVID19_DEATH_US_URL']
+        death_us_df = pd.read_csv(url2)
 
         total_cols = confirmed_us_df.shape[1]
         total_rows = confirmed_us_df.shape[0]
@@ -156,8 +158,8 @@ class Covid:
         conn = self.conn
         logger = self.logger
         RAW_TABLE_NAME = 'covid19_global_raw'
-        confirmed_global_df = pd.read_csv(confirmed_case_global_url)
-        death_global_df = pd.read_csv(death_global_url)
+        confirmed_global_df = pd.read_csv(env.get('COVID19_CONFIRMED_GLOBAL_URL'))
+        death_global_df = pd.read_csv(env.get('COVID19_DEATH_GLOBAL_URL'))
 
         total_cols = confirmed_global_df.shape[1]
         total_rows = confirmed_global_df.shape[0]
@@ -219,7 +221,7 @@ class Covid:
 
     """
     Dependencies:
-        extract_us() -> 
+        extract_us() ->
         transform_raw_to_fact_us() ->
         aggregate_fact_to_monthly_fact_us() (this)
     """
@@ -272,7 +274,7 @@ class Covid:
 
     """
     Dependencies:
-        extract_us() -> 
+        extract_us() ->
         transform_raw_to_fact_us() ->
         this
     """
@@ -321,9 +323,9 @@ class Covid:
 
     """
     Dependencies:
-        extract_us() -> 
+        extract_us() ->
         transform_raw_to_dim_us() (this)
-    
+
     """
 
 
@@ -356,7 +358,7 @@ class Covid:
 
     """
     Dependencies:
-        extract_global() -> 
+        extract_global() ->
         transform_raw_to_dim_country() ->
     """
 
@@ -396,7 +398,7 @@ class Covid:
 
     """
     Dependencies:
-        extract_global() -> 
+        extract_global() ->
         transform_raw_to_dim_country() ->
         transform_raw_to_fact_global() ->
         this
@@ -451,7 +453,7 @@ class Covid:
     """
     Dependencies:
         extract_global() -> transform_raw_to_dim_country() ->this
-    
+
     src table (Province_State, Country_Region, Lat, Long_,date, confirmed, deaths)
     dest table (dateid, country_code, date, confirmed, deaths)
     """
