@@ -42,7 +42,8 @@ Table                 | Rows     | Columns | AVG row length | Table size | Perio
 `stock_price_fact` | 104,695 | 9 | 145 | 18.1 MiB | 2020.01.02 - 2020.11.01 | Fact table for stock price transfomred from raw table.
 `stock_price_monthly_fact` | 5,011 | 12 | 317 | 1.7 MiB | 2020.01.02 - 2020.11.01 | Monthly fact table aggregated from daily fact table.
 `bol_raw` | 1080 | 5 | 91 | 96 KiB | 2020.01.01 - 2020.11.01 | Raw table for unimployment data extract from [U.S Bureau of Labor](https://www.bls.gov/data/)
-`bol_series_dim` | 8 | 4 | 2048 | 16 KiB | Dimentional table contains desired features (e.g., unimployment rate [Employment / Unemployment rate](#unemployment-rate) 
+`bol_series_dim` | 8 | 4 | 2048 | 16 KiB | 2020.01.01 - 2020.11.01 | Dimentional table contains desired features (e.g., unimployment rate [Employment / Unemployment rate](#unemployment-rate) 
+`bol_series_fact` | 1080 | 5 | 91 | 160 KiB | 2020.01.01 - 2020.11.01 | Fact table transform from raw table
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
