@@ -37,6 +37,7 @@ Table                 | Rows     | Columns | AVG row length | Table size | Perio
 `country_dim`         |166       | 16      |397             |  64 KiB    |N/A                         | Dim table for countries
 `covid19_global_fact`  |47,144       | 5      |80             |  5 MiB    |N/A                         | Fact table for global
 `covid19_global_monthly_fact`  |1660       | 5      |80             |  5 MiB    |N/A                         | Fact table for global (aggregate monthly)
+`stock_ticker_raw` |505 | 8 | 194 | 112 KiB | N/A | Raw table for stock ticker. Acquired by fetching [wiki page of S&P 500](http://en.wikipedia.org/wiki/List_of_S%26P_500_companies).
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
