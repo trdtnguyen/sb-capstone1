@@ -31,16 +31,18 @@ Table                 | Rows     | Columns | AVG row length | Table size | Perio
 ----------------------|----------|---------|----------------|------------|----------------------------|-------------
 `covid19_us_raw`      |928,520   | 15      |139             | 123.7 MiB  |2020.01.22 - 2020.11.01     | Raw table for covid19 in the US
 `covid19_us_dim`      |  3,340   | 12      |152             | 480 KiB    |2020.01.22 - 2020.11.01     | Dim table for covid19 in the US
-`covid19_us_fact`     |  928,520   | 12      |152              | 480 KiB    |2020.01.22 - 2020.11.01     | Fact table for covid19 in the US
-`covid19_us_monthly_fact`     |  33,400   | 12      |152              | 480 KiB    |2020.01.22 - 2020.11.01     | Fact table for covid19 in the US (aggregate monthly)
+`covid19_us_fact`     |  928,520   | 5      |80              | 92 MiB    |2020.01.22 - 2020.11.01     | Fact table for covid19 in the US
+`covid19_us_monthly_fact`     |  33,400   | 8      |78              | 4 MiB    |2020.01.22 - 2020.11.01     | Fact table for covid19 in the US (aggregate monthly)
 `covid19_global_raw`  | 76,112   | 7       |78              |   5.5 MiB  |2020.01.22 - 2020.11.01     | Raw table for covid19 in the global
 `country_dim`         |166       | 16      |397             |  64 KiB    |N/A                         | Dim table for countries
 `covid19_global_fact`  |47,144       | 5      |80             |  5 MiB    |N/A                         | Fact table for global
-`covid19_global_monthly_fact`  |1660       | 5      |80             |  5 MiB    |N/A                         | Fact table for global (aggregate monthly)
+`covid19_global_monthly_fact`  |1660       | 8      |78             |  48 KiB    |N/A                         | Fact table for global (aggregate monthly)
 `stock_ticker_raw` |505 | 8 | 194 | 112 KiB | N/A | Raw table for stock ticker. Acquired by fetching [wiki page of S&P 500](http://en.wikipedia.org/wiki/List_of_S%26P_500_companies).
 `stock_price_raw` | 97,416 | 8 | 91 | 8.5 MiB | 2020.01.02 - 2020.11.01 | Raw table for stock price extract from Yahoo finance.
 `stock_price_fact` | 104,695 | 9 | 145 | 18.1 MiB | 2020.01.02 - 2020.11.01 | Fact table for stock price transfomred from raw table.
 `stock_price_monthly_fact` | 5,011 | 12 | 317 | 1.7 MiB | 2020.01.02 - 2020.11.01 | Monthly fact table aggregated from daily fact table.
+`bol_raw` | 1080 | 5 | 91 | 96 KiB | 2020.01.01 - 2020.11.01 | Raw table for unimployment data extract from [U.S Bureau of Labor](https://www.bls.gov/data/)
+`bol_series_dim` | 8 | 4 | 2048 | 16 KiB | Dimentional table contains desired features (e.g., unimployment rate [Employment / Unemployment rate](#unemployment-rate) 
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
@@ -193,7 +195,7 @@ Date          High        Low       Open      Close       Volume     Adj Close
 2020-01-08  76.110001  74.290001  74.290001  75.797501  132079200.0  75.278160
 ```
 
-### Employment / Unemployment rate
+### Unemployment rate
 * Data source: [U.S Bureau of Labor](https://www.bls.gov/data/)
 * Type: Time series
 * Supported methods: API, json
