@@ -4,6 +4,7 @@ RUN pip install  apache-airflow[mysql,crypto]==1.10.12 --constraint "https://raw
 RUN pip install  mysql-connector-python
 RUN pip install  pandas
 RUN pip install  pymysql
+RUN pip install  jupyter
 
 WORKDIR /root/airflow/
 

@@ -21,6 +21,9 @@ if [ ! -f $INIT_FILE ]; then
 
     # Setup app DB
     python db/setup_db.py
+
+    #start jupyter notebook
+    jupyter notebook --ip=0.0.0.0 --port=8080 --allow-root
     # This configuration is done only the first time
     touch $INIT_FILE
 fi

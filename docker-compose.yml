@@ -22,7 +22,7 @@ services:
             - db
         init: true
         ports:
-            - "8080:8080"
+            - "192.168.0.2:8080:8080"
         environment:
             - PYTHONPATH=/root/airflow
         env_file:
