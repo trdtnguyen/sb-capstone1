@@ -5,20 +5,23 @@ __version__ = '0.1'
 __author__ = 'Dat Nguyen'
 
 import pandas as pd
+from pyspark.sql import SparkSession
+
 from db.DB import DB
 import configparser
-from sqlalchemy.exc import DBAPIError
-from sqlalchemy import Table, select, update, insert
 from datetime import timedelta, datetime
+import os
 from os import environ as env
 import pymysql
 from sqlalchemy.sql import text
 
-confirmed_cases_US_url = env.get('COVID19_CONFIRMDED_US_URL')
-death_US_url = env.get('COVID19_DEATH_US_URL')
-
-confirmed_case_global_url = env.get('COVID19_CONFIRMED_GLOBAL_URL')
-death_global_url = env.get('COVID19_DEATH_GLOBAL_URL')
+project_path = env.get('COVID_PROJECT_PATH')
+print(project_path)
+# confirmed_cases_US_url = env.get('COVID19_CONFIRMDED_US_URL')
+# death_US_url = env.get('COVID19_DEATH_US_URL')
+#
+# confirmed_case_global_url = env.get('COVID19_CONFIRMED_GLOBAL_URL')
+# death_global_url = env.get('COVID19_DEATH_GLOBAL_URL')
 
 """
 10/18/20 -> 2020-10-18
@@ -38,7 +41,7 @@ class Covid:
     """Constructor
 
     """
-    def __init__(self):
+    def __init__(self, spark: SparkSession):
         user = env.get('MYSQL_USER')
         db_name = env.get('MYSQL_DATABASE')
         pw = env.get('MYSQL_PASSWORD')
@@ -50,7 +53,8 @@ class Covid:
         self.db = DB(str_conn)
         self.conn = self.db.get_conn()
         self.logger = self.db.get_logger()
-
+        # spark
+        self.spark = spark
 
 
     def extract_us(self):
@@ -60,12 +64,19 @@ class Covid:
         DIM_TABLE_NAME = 'covid19_us_dim'
 
         config = configparser.ConfigParser()
-        config.read('/root/airflow/config.cnf')
+        #config.read('/root/airflow/config.cnf')
+        config_path = os.path.join(project_path, 'config.cnf')
+        config.read(config_path)
+        with open(config_path, 'r') as f:
+            test = f.readlines
+            print(test)
         url1 = config['COVID19']['COVID19_CONFIRMED_US_URL']
-        confirmed_us_df = pd.read_csv(url1)
+        #confirmed_us_df = pd.read_csv(url1)
+        confirmed_us_df = self.spark.read.csv(url1, header=True, inferSchema=True)
 
         url2 = config['COVID19']['COVID19_DEATH_US_URL']
-        death_us_df = pd.read_csv(url2)
+        #death_us_df = pd.read_csv(url2)
+        death_us_df = self.spark.read.csv(url2, header=True, inferSchema=True)
 
         total_cols = confirmed_us_df.shape[1]
         total_rows = confirmed_us_df.shape[0]
@@ -158,17 +169,21 @@ class Covid:
         conn = self.conn
         logger = self.logger
         RAW_TABLE_NAME = 'covid19_global_raw'
+
+        # Read CSV files from data sources
         confirmed_global_df = pd.read_csv(env.get('COVID19_CONFIRMED_GLOBAL_URL'))
         death_global_df = pd.read_csv(env.get('COVID19_DEATH_GLOBAL_URL'))
 
         total_cols = confirmed_global_df.shape[1]
         total_rows = confirmed_global_df.shape[0]
-        print(f'Data source Dataframe has {total_rows} rows and {total_cols} cols')
+        logger.debug(f'Data source Dataframe has {total_rows} rows and {total_cols} cols')
 
         COL_NAMES = ['Province_State', 'Country_Region', 'Lat', 'Long_'
                                                                 'date', 'confirmed', 'deaths']
         date_col = 4  # the index of date column in the df
         insert_list = []
+        logger.info("Extract data from data sources ...")
+        logger.info('Extract confirms values from confirmed_global_df ...', end=' ')
         print("Extract data from data sources ...")
         print('Extract confirms values from confirmed_global_df ...', end=' ')
         confirm_2d = []
@@ -502,6 +517,16 @@ class Covid:
             logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
             print(e)
         print('Done.')
+
+
+spark = SparkSession \
+    .builder \
+    .appName("sb-miniproject6") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+covid = Covid(spark)
+covid.extract_us()
+
 #extract_us(conn, logger)
 #extract_global(conn, logger)
 
