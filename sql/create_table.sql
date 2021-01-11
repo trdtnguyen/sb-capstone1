@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS latest_data;
 DROP TABLE IF EXISTS covid19_us_monthly_fact;
 DROP TABLE IF EXISTS covid19_us_fact;
 DROP TABLE IF EXISTS covid19_us_dim;
@@ -15,6 +16,28 @@ DROP TABLE IF EXISTS stock_price_raw;
 DROP TABLE IF EXISTS bol_series_fact;
 DROP TABLE IF EXISTS bol_series_dim;
 DROP TABLE IF EXISTS bol_raw;
+
+/*global table for resuming extraction*/
+CREATE TABLE IF NOT EXISTS latest_data(
+    table_name VARCHAR(128) NOT NULL,
+    latest_date datetime NOT NULL,
+    PRIMARY KEY (table_name)
+);
+INSERT INTO latest_data VALUES("covid19_us_monthly_fact", "1990-01-01");
+INSERT INTO latest_data VALUES("covid19_us_fact", "1990-01-01");
+INSERT INTO latest_data VALUES("covid19_us_dim", "1990-01-01");
+INSERT INTO latest_data VALUES("covid19_global_monthly_fact", "1990-01-01");
+INSERT INTO latest_data VALUES("covid19_global_fact", "1990-01-01");
+INSERT INTO latest_data VALUES("country_dim", "1990-01-01");
+INSERT INTO latest_data VALUES("covid19_global_raw", "1990-01-01");
+INSERT INTO latest_data VALUES("covid19_us_raw", "1990-01-01");
+INSERT INTO latest_data VALUES("stock_price_monthly_fact", "1990-01-01");
+INSERT INTO latest_data VALUES("stock_price_fact", "1990-01-01");
+INSERT INTO latest_data VALUES("stock_ticker_raw", "1990-01-01");
+INSERT INTO latest_data VALUES("stock_price_raw", "1990-01-01");
+INSERT INTO latest_data VALUES("bol_series_fact", "1990-01-01");
+INSERT INTO latest_data VALUES("bol_series_dim", "1990-01-01");
+INSERT INTO latest_data VALUES("bol_raw", "1990-01-01");
 
 /*dimension table used for extracting raw data*/
 CREATE TABLE IF NOT EXISTS covid19_us_raw (

@@ -13,7 +13,7 @@ services:
         networks:
             - mynet
         volumes:
-            - mysqldata/var/lib/mysql
+            - mysqldata:/var/lib/mysql
     airflow-engine:
         build: .
         container_name: airflow
@@ -22,7 +22,7 @@ services:
             - db
         init: true
         ports:
-            - "192.168.0.2:8080:8080"
+            - "192.168.0.2:8082:8080"
         environment:
             - PYTHONPATH=/root/airflow
         env_file:
@@ -31,7 +31,7 @@ services:
         networks:
             - mynet
         volumes:
-            - airflowdata/root/airflow/
+            - airflowdata:/root/airflow/
 networks:
     mynet:
 volumes:
