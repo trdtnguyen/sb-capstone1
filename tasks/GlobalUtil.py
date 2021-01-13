@@ -22,7 +22,8 @@ class GlobalUtil(object):
 
     PROJECT_PATH = env.get('COVID_PROJECT_PATH')
 
-    CONFIG = configparser.ConfigParser()
+    #CONFIG = configparser.ConfigParser()
+    CONFIG = configparser.RawConfigParser() # Use RawConfigParser() to read url with % character
     CONFIG_FILE = 'config.cnf'
     config_path = os.path.join(PROJECT_PATH, CONFIG_FILE)
     CONFIG.read(config_path)
