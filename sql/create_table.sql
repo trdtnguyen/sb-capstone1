@@ -115,9 +115,7 @@ CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
 
 CREATE TABLE IF NOT EXISTS country_dim(
     code VARCHAR(3), -- country's code in 3 leters e.g., CAN
-    Name VARCHAR(32), -- country's name e.g., Canada
-	Lat double NOT NULL,
-    Long_ double NOT NULL,
+    Name VARCHAR(64), -- country's name e.g., Canada
     Continent VARCHAR(32), -- e.g., North America
     Region VARCHAR(32), -- e.g., North America
     SurfaceArea double,

@@ -4,6 +4,7 @@ Extract Covid-19 data from Johns Hopkins' data source
 __version__ = '0.1'
 __author__ = 'Dat Nguyen'
 
+from GlobalUtil import GlobalUtil
 # import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark import SparkFiles  # for reading csv file from https
@@ -18,27 +19,8 @@ from os import environ as env
 import pymysql
 from sqlalchemy.sql import text
 
-LATEST_DATA_TABLE_NAME = 'latest_data'
-START_DEFAULT_DATE = datetime(1990, 1, 1)
-
-project_path = env.get('COVID_PROJECT_PATH')
-config = configparser.ConfigParser()
-# config.read('/root/airflow/config.cnf')
-config_path = os.path.join(project_path, 'config.cnf')
-config.read(config_path)
-
-# use rewriteBatchedStatements=true for speed up writing to db
-JDBC_MYSQL_URL = 'jdbc:mysql://192.168.0.2:' + \
-                 config['DATABASE']['MYSQL_PORT'] + '/' + \
-                 config['DATABASE']['MYSQL_DATABASE'] + '?' + \
-                 'rewriteBatchedStatements=true'
-
 """
-10/18/20 -> 2020-10-18
-"""
-
-"""
-Convert from string 'yyyy/mm/dd' to datetime
+   Convert from string 'yyyy/mm/dd' to datetime
 """
 def convert_date(in_date: str):
     d_list = in_date.split('/')
@@ -49,31 +31,22 @@ def convert_date(in_date: str):
     out_date = datetime(year, month, day)
     return out_date
 
+
 """
-Transpose from columns with the same type to rows
-df: the input dataframe
-by_cols: array of columns to be transposed to array. All columns type must have the same type
-alias_key: name of new column that represent for all columns in by_cols
-alias_val: name of new column that show values of columns in by_cols 
+Convert from datetime to dateid
 """
+def from_date_to_dateid(date: datetime):
+    date_str = date.strftime('%Y-%m-%d')
+    date_str = date_str.replace('-', '')
+    dateid = int(date_str)
+    return dateid
 
+def create_first_day_of_month(month: int, year: int):
+    return datetime(year, month, 1)
 
-def transpose_columns_to_rows(df, by_cols, alias_key: str, alias_val: str):
-    # Filter dtypes and split into column names and type description
-    cols, dtypes = zip(
-        *((col_name, type_name)
-          for (col_name, type_name) in df.dtypes if col_name not in by_cols
-          )
-    )
-    assert len(set(dtypes)) == 1, "All columns have to be of the same type"
-    kvs = explode(array([
-        struct(lit(c).alias(alias_key), col(c).alias(alias_val)) for c in cols
-    ])).alias("kvs")
-    kvs_key = "kvs." + alias_key
-    kvs_val = "kvs." + alias_val
-
-    return df.select(by_cols + [kvs]).select(by_cols + [kvs_key, kvs_val])
-
+def get_month_name(date):
+    month_name = date.strftime('%B')
+    return month_name
 
 class Covid:
     """Constructor
@@ -107,7 +80,7 @@ class Covid:
         #######################################
         # Step 1 Read CSV file from datasource to Spark DataFrame
         #######################################
-        url1 = config['COVID19']['COVID19_CONFIRMED_US_URL']
+        url1 = GU.CONFIG['COVID19']['COVID19_CONFIRMED_US_URL']
         # confirmed_us_df = pd.read_csv(url1)
         file_name1 = os.path.basename(url1)
 
@@ -118,7 +91,7 @@ class Covid:
         ncols1 = len(confirmed_us_df.columns)
         # confirmed_us_df.describe().show()
 
-        url2 = config['COVID19']['COVID19_DEATH_US_URL']
+        url2 = GU.CONFIG['COVID19']['COVID19_DEATH_US_URL']
         file_name2 = os.path.basename(url2)
         # death_us_df = pd.read_csv(url2)
         spark.sparkContext.addFile(url2)
@@ -138,26 +111,11 @@ class Covid:
         #######################################
 
         # driver_name = 'com.mysql.jdbc.Driver' # Old driver
-        driver_name = 'com.mysql.cj.jdbc.Driver'
+
         print('Read from database ...')
-        latest_df = spark.read.format('jdbc').options(
-            url=JDBC_MYSQL_URL,
-            driver=driver_name,
-            dbtable=LATEST_DATA_TABLE_NAME,
-            user=config['DATABASE']['MYSQL_USER'],
-            password=config['DATABASE']['MYSQL_PASSWORD']).load()
-        # below code make Spark actually load data
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, RAW_TABLE_NAME)
         latest_df = latest_df.cache()
         latest_df.count()
-
-        if len(latest_df.collect()) > 0:
-            latest_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
-            if len(latest_date_arr) > 0:
-                assert len(latest_date_arr) == 1
-
-                latest_date = latest_date_arr[0][1]
-                if latest_date > START_DEFAULT_DATE:
-                    is_resume_extract = True
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -165,14 +123,14 @@ class Covid:
                 return
             else:
                 ### Resuming extract
-                start_index = date_col + (latest_date.day - begin_date.day)
+                start_index = date_col + (end_date.day - latest_date.day)
                 confirmed_us_df = confirmed_us_df.select(
                     confirmed_us_df['UID'], confirmed_us_df['iso2'], confirmed_us_df['iso3'],
                     confirmed_us_df['code3'], confirmed_us_df['FIPS'], confirmed_us_df['Admin2'],
                     confirmed_us_df['Province_State'], confirmed_us_df['Country_Region'],
                     confirmed_us_df['Lat'], confirmed_us_df['Long_'],
                     confirmed_us_df['Combined_Key'],
-                    confirmed_us_df[(start_index-1):]
+                    *(confirmed_us_df.columns[(start_index - 1):])
                 )
                 death_us_df = death_us_df.select(
                     death_us_df['UID'], death_us_df['iso2'], death_us_df['iso3'],
@@ -180,21 +138,13 @@ class Covid:
                     death_us_df['Province_State'], death_us_df['Country_Region'],
                     death_us_df['Lat'], death_us_df['Long_'],
                     death_us_df['Combined_Key'], death_us_df['Population'],
-                    death_us_df[start_index:]
+                    *(death_us_df.columns[start_index:])
                 )
 
         #########
         ### Update latest date
         #########
-
-        latest_df = latest_df.withColumn(
-            "latest_date",
-            when(
-                latest_df["table_name"] == RAW_TABLE_NAME,
-                end_date
-            ).otherwise(latest_df["latest_date"])
-        )
-
+        latest_df = GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
         print('Done.')
 
         #######################################
@@ -222,11 +172,11 @@ class Covid:
         by_cols2 = by_cols1.copy()
         by_cols2.append('Population')
 
-        trans_df1 = transpose_columns_to_rows(confirmed_us_df,
-                                                  by_cols1, 'date', 'confirmed')
-        trans_df2 = transpose_columns_to_rows(death_us_df,
-                                                  by_cols2, 'date', 'deaths')
-        df = trans_df2.join(trans_df1, (trans_df1.UID == trans_df2.UID) & (trans_df1.date == trans_df2.date))\
+        trans_df1 = GU.transpose_columns_to_rows(confirmed_us_df,
+                                                 by_cols1, 'date', 'confirmed')
+        trans_df2 = GU.transpose_columns_to_rows(death_us_df,
+                                                 by_cols2, 'date', 'deaths')
+        df = trans_df2.join(trans_df1, (trans_df1.UID == trans_df2.UID) & (trans_df1.date == trans_df2.date)) \
             .select(
             trans_df2['UID'], trans_df2['iso2'], trans_df2['iso3'],
             trans_df2['code3'], trans_df2['FIPS'], trans_df2['Admin2'],
@@ -243,34 +193,15 @@ class Covid:
         ####################################
         # Step 4 Write to Database
         ####################################
-        print('Write to database ...')
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME} ...')
+        GU.write_latest_data(latest_df, logger)
 
-        try:
-            # overwrite the content of LATEST_DATA_TABLE_NAME
-            latest_df.write.format('jdbc').options(
-                truncate=True,
-                url=JDBC_MYSQL_URL,
-                driver=driver_name,
-                dbtable=LATEST_DATA_TABLE_NAME,
-                user=config['DATABASE']['MYSQL_USER'],
-                password=config['DATABASE']['MYSQL_PASSWORD']).mode('overwrite').save()
+        if not is_resume_extract:
+            print(f'Write to table {DIM_TABLE_NAME} ...')
+            GU.write_to_db(df, DIM_TABLE_NAME, logger)
 
-            if not is_resume_extract:
-                dim_df.write.format('jdbc').options(
-                    url=JDBC_MYSQL_URL,
-                    driver=driver_name,
-                    dbtable=DIM_TABLE_NAME,
-                    user=config['DATABASE']['MYSQL_USER'],
-                    password=config['DATABASE']['MYSQL_PASSWORD']).mode('append').save()
-            df.write.format('jdbc').options(
-                url=JDBC_MYSQL_URL,
-                driver=driver_name,
-                dbtable=RAW_TABLE_NAME,
-                user=config['DATABASE']['MYSQL_USER'],
-                password=config['DATABASE']['MYSQL_PASSWORD']).mode('append').save()
-        except ValueError:
-            logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
-        print('Done.')
+        print(f'Write to table {RAW_TABLE_NAME} ...')
+        GU.write_to_db(df, RAW_TABLE_NAME, logger)
 
     def extract_global(self):
         logger = self.logger
@@ -282,12 +213,12 @@ class Covid:
         #######################################
         # Step 1 Read CSV file from datasource to Spark DataFrame
         #######################################
-        url1 = config['COVID19']['COVID19_CONFIRMED_GLOBAL_URL']
+        url1 = GU.CONFIG['COVID19']['COVID19_CONFIRMED_GLOBAL_URL']
         file_name1 = os.path.basename(url1)
         spark.sparkContext.addFile(url1)
         confirmed_df = self.spark.read.csv('file://' + SparkFiles.get(file_name1), header=True, inferSchema=True)
 
-        url2 = config['COVID19']['COVID19_DEATH_GLOBAL_URL']
+        url2 = GU.CONFIG['COVID19']['COVID19_DEATH_GLOBAL_URL']
         file_name2 = os.path.basename(url2)
         spark.sparkContext.addFile(url2)
         death_df = self.spark.read.csv('file://' + SparkFiles.get(file_name2), header=True, inferSchema=True)
@@ -303,28 +234,10 @@ class Covid:
         #######################################
         # Step 2 Read from database to determine the last written data point
         #######################################
-
-        # driver_name = 'com.mysql.jdbc.Driver' # Old driver
-        driver_name = 'com.mysql.cj.jdbc.Driver'
         print('Read from database ...')
-        latest_df = spark.read.format('jdbc').options(
-            url=JDBC_MYSQL_URL,
-            driver=driver_name,
-            dbtable=LATEST_DATA_TABLE_NAME,
-            user=config['DATABASE']['MYSQL_USER'],
-            password=config['DATABASE']['MYSQL_PASSWORD']).load()
-        # below code make Spark actually load data
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, RAW_TABLE_NAME)
         latest_df = latest_df.cache()
         latest_df.count()
-
-        if len(latest_df.collect()) > 0:
-            latest_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
-            if len(latest_date_arr) > 0:
-                assert len(latest_date_arr) == 1
-
-                latest_date = latest_date_arr[0][1]
-                if latest_date > START_DEFAULT_DATE:
-                    is_resume_extract = True
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -336,37 +249,30 @@ class Covid:
                 confirmed_df = confirmed_df.select(
                     confirmed_df['Province/State'], confirmed_df['Country/Region'],
                     confirmed_df['Lat'], confirmed_df['Long_'],
-                    confirmed_df[start_index:]
+                    *(confirmed_df.columns[start_index:])
                 )
                 death_df = death_df.select(
                     death_df['Province/State'], death_df['Country/Region'],
                     death_df['Lat'], death_df['Long_'],
-                    death_df[start_index:]
+                    *(death_df.columns[start_index:])
                 )
 
         #########
         ### Update latest date
         #########
-        latest_df = latest_df.withColumn(
-            "latest_date",
-            when(
-                latest_df["table_name"] == RAW_TABLE_NAME,
-                end_date
-            ).otherwise(latest_df["latest_date"])
-        )
+        latest_df = GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
+
         print('Done.')
         #######################################
         # Step 3 Transform data
         #######################################
         by_cols = ['Province/State', 'Country/Region', 'Lat', 'Long']
-        confirmed_df.show()
-        print()
-        death_df.show()
-        trans_df1 = transpose_columns_to_rows(confirmed_df,
-                                              by_cols, 'date', 'confirmed')
-        trans_df2 = transpose_columns_to_rows(death_df,
-                                              by_cols, 'date', 'deaths')
-        df = trans_df2.join(trans_df1, (trans_df1['Country/Region'] == trans_df2['Country/Region']) & (trans_df1.date == trans_df2.date)) \
+        trans_df1 = GU.transpose_columns_to_rows(confirmed_df,
+                                                 by_cols, 'date', 'confirmed')
+        trans_df2 = GU.transpose_columns_to_rows(death_df,
+                                                 by_cols, 'date', 'deaths')
+        df = trans_df2.join(trans_df1, (trans_df1['Country/Region'] == trans_df2['Country/Region']) & (
+                    trans_df1.date == trans_df2.date)) \
             .select(
             trans_df2['Province/State'], trans_df2['Country/Region'],
             trans_df2['Lat'], trans_df2['Long'],
@@ -375,39 +281,27 @@ class Covid:
         # Refine the date column from 'yyyy/mm/dd' to 'yyyy-mm-dd'
         date_udf = udf(lambda d: convert_date(d), DateType())
         df = df.withColumn('date', date_udf(df['date']))
-        df = df.withColumnRenamed('Province/State', 'Province_State')\
+        df = df.withColumnRenamed('Province/State', 'Province_State') \
             .withColumnRenamed('Country/Region', 'Country_Region') \
             .withColumnRenamed('Long', 'Long_')
 
-        if __debug__:
-            df.show()
-        test = df.filter(df['Lat'] == 'null')
-        test.show()
+        # if __debug__:
+        #     df.show()
+        # filter null
+        before = df.count()
+        df = df.where(df['Lat'].isNotNull())
+        after = before = df.count()
+        print(f'filtered out {(before - after)} rows with Lat is NULL')
+
         ####################################
         # Step 4 Write to Database
         ####################################
-        print('Write to database ...')
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
+        print(f'Write to table {RAW_TABLE_NAME}...')
+        GU.write_to_db(df, RAW_TABLE_NAME, logger)
 
-        try:
-            # overwrite the content of LATEST_DATA_TABLE_NAME
-            latest_df.write.format('jdbc').options(
-                truncate=True,
-                url=JDBC_MYSQL_URL,
-                driver=driver_name,
-                dbtable=LATEST_DATA_TABLE_NAME,
-                user=config['DATABASE']['MYSQL_USER'],
-                password=config['DATABASE']['MYSQL_PASSWORD']).mode('overwrite').save()
-
-            df.write.format('jdbc').options(
-                url=JDBC_MYSQL_URL,
-                driver=driver_name,
-                dbtable=RAW_TABLE_NAME,
-                user=config['DATABASE']['MYSQL_USER'],
-                password=config['DATABASE']['MYSQL_PASSWORD']).mode('append').save()
-        except ValueError:
-            logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
         print('Done.')
-
 
     """
     Dependencies:
@@ -421,43 +315,77 @@ class Covid:
         logger = self.logger
         FACT_TABLE_NAME = 'covid19_us_fact'
         MONTHLY_FACT_TABLE_NAME = 'covid19_us_monthly_fact'
+
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+
         print(f'Aggregate data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
-        s = text("SELECT UID, YEAR(date), MONTH(date), MONTHNAME(date), SUM(confirmed) , SUM(deaths) "
-                 f"FROM {FACT_TABLE_NAME} "
-                 "GROUP BY UID, YEAR(date), MONTH(date), MONTHNAME(date) "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            # transform the datetime to dateid
-            insert_list = []
-            for row in ret_list:
-                insert_val = {}
 
-                year = row[1]
-                month = row[2]
-                insert_date = datetime(year, month, 1)
-                date_str = insert_date.strftime('%Y-%m-%d')
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, MONTHLY_FACT_TABLE_NAME)
 
-                dateid = int(date_str.replace('-', ''))
-                insert_val['dateid'] = dateid
-                insert_val['UID'] = row[0]
-                insert_val['date'] = insert_date
-                insert_val['year'] = year
-                insert_val['month'] = month
-                insert_val['month_name'] = row[3]
-                insert_val['confirmed'] = row[4]
-                insert_val['deaths'] = row[5]
 
-                insert_list.append(insert_val)
+        end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
 
-            df = pd.DataFrame(insert_list)
-            if len(df) > 0:
-                df.to_sql(MONTHLY_FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}')
-            print(e)
+        fact_df = GU.read_from_db(spark, FACT_TABLE_NAME)
+
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = fact_df.count()
+                fact_df = fact_df.filter(
+                    fact_df['date'] > latest_date
+                )
+                after = fact_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
+
+        #########
+        ### Step 3 Transform
+        #########
+        fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
+        s = "SELECT UID, YEAR(date), MONTH(date), SUM(confirmed) , SUM(deaths)" + \
+            f"FROM {FACT_TABLE_NAME} " + \
+            "GROUP BY UID, YEAR(date), MONTH(date)"
+
+        df = spark.sql(s)
+        # Change columns name by index to match the schema
+        df = df.toDF('UID', 'year', 'month', 'confirmed', 'deaths')
+
+        # Add column 'dateid' and 'date'
+        first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
+        month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('date', first_day_udf(df['year'], df['month']))
+        df = df.withColumn('dateid', dateid_udf(df['date'])) \
+            .withColumn('month_name', month_name_udf(df['date']))
+
+        # Reorder the columns to match the schema
+        df = df.select(df['dateid'], df['UID'], df['date'], df['year'],
+                       df['month'], df['month_name'], df['confirmed'], df['deaths'])
+
+        # df.show()
+
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
+        GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
         print('Done.')
 
     """
@@ -468,82 +396,74 @@ class Covid:
     """
 
     def transform_raw_to_fact_us(self):
-        conn = self.conn
+
         logger = self.logger
         RAW_TABLE_NAME = 'covid19_us_raw'
         FACT_TABLE_NAME = 'covid19_us_fact'
+        is_resume_extract = False
 
-        # 1. Transform from raw to fact table
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+
         print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
-        s = text("SELECT UID, date, confirmed, deaths "
-                 f"FROM {RAW_TABLE_NAME} "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            # transform the datetime to dateid
-            insert_list = []
-            for row in ret_list:
-                insert_val = {}
 
-                date = row[1]
-                date_str = date.strftime('%Y-%m-%d')
-                date_str = date_str.replace('-', '')
-                dateid = int(date_str)
-                insert_val['dateid'] = dateid
-                insert_val['UID'] = row[0]
-                insert_val['date'] = row[1]
-                insert_val['confirmed'] = row[2]
-                insert_val['deaths'] = row[3]
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, FACT_TABLE_NAME)
 
-                insert_list.append(insert_val)
 
-            df = pd.DataFrame(insert_list)
-            if len(df) > 0:
-                df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
-            print(e)
+        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = raw_df.count()
+                raw_df = raw_df.filter(
+                    raw_df['date'] > latest_date
+                )
+                after = raw_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+
+        #########
+        ### Step 3 Transform
+        #########
+        # Filtering specific columns
+        df = raw_df.select(
+            col('UID'), col('date'), col('confirmed'), col('deaths')).distinct()
+        # Add column "dateid" computed from "date"
+        dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
+        df = df.withColumn('dateid', dateid_udf(raw_df['date']))
+
+        if __debug__:
+            df.show()
+
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
+        print(f'Write to table {FACT_TABLE_NAME}...')
+        GU.write_to_db(df, FACT_TABLE_NAME, logger)
+
         print('Done.')
 
     """
     Dependencies:
-        extract_us() ->
-        transform_raw_to_dim_us() (this)
-
-    """
-
-    def transform_raw_to_dim_us(self, ):
-        conn = self.conn
-        logger = self.logger
-        RAW_TABLE_NAME = 'covid19_us_raw'
-        DIM_TABLE_NAME = 'covid19_us_dim'
-
-        # 1. Transform from raw to dim table
-        print(f'Transform data from {RAW_TABLE_NAME} to {DIM_TABLE_NAME}.')
-        s = text("SELECT DISTINCT UID, iso2, iso3, code3, FIPS, Admin2, Province_State, "
-                 "Country_Region, Lat, Long_, Combined_Key, Population "
-                 f"FROM {RAW_TABLE_NAME} "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            df = pd.DataFrame(ret_list)
-            # Refine the column names
-            df.columns = keys
-            if len(df) > 0:
-                df.to_sql(DIM_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {DIM_TABLE_NAME}')
-            print(e)
-        print('Done.')
-
-    """
-    Dependencies:
-        extract_global() ->
-        transform_raw_to_dim_country() ->
+        None. This function could work independently with others
     """
 
     def transform_raw_to_dim_country(self):
@@ -551,31 +471,56 @@ class Covid:
         logger = self.logger
         RAW_TABLE_NAME = 'covid19_global_raw'
         DIM_TABLE_NAME = 'country_dim'
-        COUNTRY_TABLE_NAME = 'world.country'
+        #COUNTRY_TABLE_NAME = 'world.country'
+        COUNTRY_TABLE_NAME = 'world_country'
 
-        # 1. Transform from raw to fact table
-        print(f'Transform data from {RAW_TABLE_NAME} and {COUNTRY_TABLE_NAME} to {DIM_TABLE_NAME}.')
-        s = text("SELECT DISTINCT code, Name, Lat, Long_, Continent, "
-                 "Region, SurfaceArea, IndepYear, Population, "
-                 "LifeExpectancy, GNP, LocalName, GovernmentForm, "
-                 "HeadOfState, Capital, Code2 "
-                 f"FROM {COUNTRY_TABLE_NAME}, {RAW_TABLE_NAME} "
-                 f"WHERE {COUNTRY_TABLE_NAME}.Name = {RAW_TABLE_NAME}.Country_Region "
-                 "GROUP BY code"
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            df = pd.DataFrame(ret_list)
-            # Refine the column names
-            df.columns = keys
-            if len(df) > 0:
-                df.to_sql(DIM_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, DIM_TABLE_NAME)
+        if is_resume_extract:
+            print(f'Dimensional table {DIM_TABLE_NAME} has been created. No further extract needed.')
+            return
 
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {DIM_TABLE_NAME}')
-            print(e)
+        #######################################
+        # Step 2 Read CSV file from external data to Spark DataFrame
+        #######################################
+        url1 = os.path.join(GU.PROJECT_PATH, 'data')
+        file1 = os.path.join(url1, GU.CONFIG['COVID19']['WORLD_COUNTRY_FILE'])
+
+        s = "SELECT DISTINCT code, Name, Lat, Long_, Continent, " + \
+            "Region, SurfaceArea, IndepYear, Population, " + \
+            "LifeExpectancy, GNP, LocalName, GovernmentForm, " + \
+            "HeadOfState, Capital, Code2 " + \
+            f"FROM {COUNTRY_TABLE_NAME}, {RAW_TABLE_NAME} " + \
+            f"WHERE {COUNTRY_TABLE_NAME}.Name = {RAW_TABLE_NAME}.Country_Region "
+        # "GROUP BY code"
+
+        df = self.spark.read.option("delimiter", ";")\
+            .csv(file1, header=True, inferSchema=True)
+        df = df.select(df['code'], df['Name'], df['Continent'], df['Region'],
+                  df['SurfaceArea'], df['IndepYear'], df['Population'],
+                  df['LifeExpectancy'], df['GNP'], df['LocalName'], df['GovernmentForm'],
+                  df['HeadOfState'], df['Capital'], df['Code2'])
+
+        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        latest_df = GU.update_latest_data(latest_df, DIM_TABLE_NAME, end_date)
+
+
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
+        print(f'Write to table {DIM_TABLE_NAME}...')
+        GU.write_to_db(df, DIM_TABLE_NAME, logger)
+
+
         print('Done.')
 
     """
@@ -591,44 +536,74 @@ class Covid:
         logger = self.logger
         FACT_TABLE_NAME = 'covid19_global_fact'
         MONTHLY_FACT_TABLE_NAME = 'covid19_global_monthly_fact'
+
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+
         print(f'Aggregate data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
-        s = text("SELECT country_code, YEAR(date), MONTH(date), MONTHNAME(date), SUM(confirmed) , SUM(deaths) "
-                 f"FROM {FACT_TABLE_NAME} "
-                 "GROUP BY country_code, YEAR(date), MONTH(date), MONTHNAME(date) "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            # transform the datetime to dateid
-            insert_list = []
-            for row in ret_list:
-                insert_val = {}
 
-                year = row[1]
-                month = row[2]
-                insert_date = datetime(year, month, 1)
-                date_str = insert_date.strftime('%Y-%m-%d')
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, MONTHLY_FACT_TABLE_NAME)
 
-                dateid = int(date_str.replace('-', ''))
-                insert_val['dateid'] = dateid
-                insert_val['country_code'] = row[0]
-                insert_val['date'] = insert_date
-                insert_val['year'] = year
-                insert_val['month'] = month
-                insert_val['month_name'] = row[3]
-                insert_val['confirmed'] = row[4]
-                insert_val['deaths'] = row[5]
+        end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
 
-                insert_list.append(insert_val)
+        fact_df = GU.read_from_db(spark, FACT_TABLE_NAME)
 
-            df = pd.DataFrame(insert_list)
-            if len(df) > 0:
-                df.to_sql(MONTHLY_FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}')
-            print(e)
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = fact_df.count()
+                fact_df = fact_df.filter(
+                    fact_df['date'] > latest_date
+                )
+                after = fact_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+
+        latest_df = GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 3 Transform
+        #########
+        fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
+        s = "SELECT dateid, country_code, YEAR(date), MONTH(date), SUM(confirmed) , SUM(deaths) " + \
+            f"FROM {FACT_TABLE_NAME} " + \
+            "GROUP BY dateid, country_code, YEAR(date), MONTH(date) " + \
+            "ORDER BY dateid, country_code, YEAR(date), MONTH(date) "
+        df = spark.sql(s)
+        # Change columns name by index to match the schema
+        df = df.toDF('dateid', 'country_code', 'year', 'month', 'confirmed', 'deaths')
+        first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('date', first_day_udf(df['year'], df['month']))
+        df = df.withColumn('month_name', month_name_udf(df['date']))
+
+        # Reorder the columns to match the schema
+        df = df.select(df['dateid'], df['country_code'], df['date'], df['year'],
+                       df['month'], df['month_name'], df['confirmed'], df['deaths'])
+
+        df.show()
+
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
+        GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
         print('Done.')
+
 
     """
     Dependencies:
@@ -639,58 +614,109 @@ class Covid:
     """
 
     def transform_raw_to_fact_global(self):
-        conn = self.conn
+
         logger = self.logger
         RAW_TABLE_NAME = 'covid19_global_raw'
         FACT_TABLE_NAME = 'covid19_global_fact'
-        COUNTRY_TABLE_NAME = 'country_dim'
+        DIM_TABLE_NAME = 'country_dim'
+        is_resume_extract = False
+
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+        print(f'Transform data by joining {RAW_TABLE_NAME}, {DIM_TABLE_NAME} to {FACT_TABLE_NAME}.')
 
         # 1. Transform from raw to fact table
-        print(f'Transform data by joining {RAW_TABLE_NAME}, {COUNTRY_TABLE_NAME} to {FACT_TABLE_NAME}.')
-        s = text("SELECT DISTINCT code, date, SUM(confirmed), SUM(deaths) "
-                 f"FROM  {COUNTRY_TABLE_NAME}, {RAW_TABLE_NAME} "
-                 f"WHERE {COUNTRY_TABLE_NAME}.Name = {RAW_TABLE_NAME}.Country_Region "
-                 "GROUP BY Country_Region, date "
-                 "ORDER BY code "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            # transform the datetime to dateid
-            insert_list = []
-            for row in ret_list:
-                insert_val = {}
 
-                date = row[1]
-                date_str = date.strftime('%Y-%m-%d')
-                date_str = date_str.replace('-', '')
-                dateid = int(date_str)
-                insert_val['dateid'] = dateid
-                insert_val['country_code'] = row[0]
-                insert_val['date'] = row[1]
-                insert_val['confirmed'] = row[2]
-                insert_val['deaths'] = row[3]
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, FACT_TABLE_NAME)
 
-                insert_list.append(insert_val)
+        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
 
-            df = pd.DataFrame(insert_list)
-            if len(df) > 0:
-                df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
-            print(e)
+        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+        dim_df = GU.read_from_db(spark, DIM_TABLE_NAME)
+
+        raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
+        dim_df.createOrReplaceTempView(DIM_TABLE_NAME)
+
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = raw_df.count()
+                raw_df = raw_df.filter(
+                    raw_df['date'] > latest_date
+                )
+                after = raw_df.count()
+                print(f'Skipped {(after - before)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+
+        #########
+        ### Step 3 Transform
+        #########
+        # Join RAW_TABLE_NAME and COUNTRY_TABLE_NAME
+        # s = text("SELECT DISTINCT code, date, SUM(confirmed), SUM(deaths) "
+        #          f"FROM  {COUNTRY_TABLE_NAME}, {RAW_TABLE_NAME} "
+        #          f"WHERE {COUNTRY_TABLE_NAME}.Name = {RAW_TABLE_NAME}.Country_Region "
+        #          "GROUP BY Country_Region, date "
+        #          "ORDER BY code "
+        #          )
+
+        s = "SELECT DISTINCT Country_Region, date, SUM(confirmed), SUM(deaths) " +\
+                 f"FROM  {RAW_TABLE_NAME} " +\
+                 "GROUP BY Country_Region, date " +\
+                 "ORDER BY date, Country_Region"
+        trans_df = spark.sql(s)
+        trans_df = trans_df.toDF('Country_Region', 'date', 'confirmed', 'deaths')
+
+        dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
+        trans_df = trans_df.withColumn('dateid', dateid_udf(trans_df['date']))
+
+        temp_table_name = RAW_TABLE_NAME+"_trans"
+        trans_df.createOrReplaceTempView(temp_table_name)
+        s = "SELECT DISTINCT dateid, code as country_code, date, confirmed, deaths " + \
+            f"FROM  {temp_table_name} ,{DIM_TABLE_NAME} " + \
+            f"WHERE {temp_table_name}.Country_Region = {DIM_TABLE_NAME}.Name " +\
+            "ORDER BY dateid, country_code, date"
+        df = spark.sql(s)
+        df.show(n=50)
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {FACT_TABLE_NAME}...')
+        GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
         print('Done.')
 
 
+GU = GlobalUtil.instance()
 spark = SparkSession \
     .builder \
     .appName("sb-miniproject6") \
     .config("spark.some.config.option", "some-value") \
     .getOrCreate()
 covid = Covid(spark)
-#covid.extract_us()
+# covid.extract_us()
+# covid.transform_raw_to_fact_us()
+#covid.aggregate_fact_to_monthly_fact_us()
+
+#covid.transform_raw_to_dim_country()
 covid.extract_global()
+covid.transform_raw_to_fact_global()
+covid.aggregate_fact_to_monthly_fact_global()
+
+
 
 # extract_us(conn, logger)
 # extract_global(conn, logger)
