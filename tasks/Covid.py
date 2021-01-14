@@ -114,8 +114,6 @@ class Covid:
 
         print('Read from database ...')
         latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, RAW_TABLE_NAME)
-        latest_df = latest_df.cache()
-        latest_df.count()
 
         if is_resume_extract:
             if latest_date >= end_date:

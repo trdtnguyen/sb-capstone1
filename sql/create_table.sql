@@ -176,7 +176,6 @@ CREATE TABLE IF NOT EXISTS stock_ticker_raw(
     industry VARCHAR(64) NULL,
     subindustry VARCHAR(64) NULL,
     hq_location VARCHAR(64) NULL,
-    date_first_added datetime NULL,
     cik VARCHAR(10) NULL, -- A Central Index Key or CIK number
     founded_year int NULL,
     PRIMARY KEY(ticker)

@@ -11,7 +11,6 @@ from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
 import configparser
 
 
-
 class GlobalUtil(object):
     # for Singeton usage
     _instance = None
@@ -22,16 +21,16 @@ class GlobalUtil(object):
 
     PROJECT_PATH = env.get('COVID_PROJECT_PATH')
 
-    #CONFIG = configparser.ConfigParser()
-    CONFIG = configparser.RawConfigParser() # Use RawConfigParser() to read url with % character
+    # CONFIG = configparser.ConfigParser()
+    CONFIG = configparser.RawConfigParser()  # Use RawConfigParser() to read url with % character
     CONFIG_FILE = 'config.cnf'
     config_path = os.path.join(PROJECT_PATH, CONFIG_FILE)
     CONFIG.read(config_path)
 
-    JDBC_MYSQL_URL = 'jdbc:mysql://192.168.0.2:' + \
-                         CONFIG['DATABASE']['MYSQL_PORT'] + '/' + \
-                         CONFIG['DATABASE']['MYSQL_DATABASE'] + '?' + \
-                         'rewriteBatchedStatements=true'
+    JDBC_MYSQL_URL = 'jdbc:mysql://' + CONFIG['DATABASE']['MYSQL_HOST'] + ':' + \
+                     CONFIG['DATABASE']['MYSQL_PORT'] + '/' + \
+                     CONFIG['DATABASE']['MYSQL_DATABASE'] + '?' + \
+                     'rewriteBatchedStatements=true'
     DRIVER_NAME = 'com.mysql.cj.jdbc.Driver'
 
     def __init__(self):
@@ -44,8 +43,6 @@ class GlobalUtil(object):
             # Init
 
         return cls._instance
-
-
 
     """
     Read latest data
@@ -93,7 +90,7 @@ class GlobalUtil(object):
 
     @classmethod
     def write_latest_data(cls, latest_df, logger):
-    # overwrite the content of LATEST_DATA_TABLE_NAME
+        # overwrite the content of LATEST_DATA_TABLE_NAME
         try:
             latest_df.write.format('jdbc').options(
                 truncate=True,
@@ -134,6 +131,7 @@ class GlobalUtil(object):
     alias_key: name of new column that represent for all columns in by_cols
     alias_val: name of new column that show values of columns in by_cols 
     """
+
     @classmethod
     def transpose_columns_to_rows(cls, df, by_cols, alias_key: str, alias_val: str):
         # Filter dtypes and split into column names and type description
@@ -150,3 +148,13 @@ class GlobalUtil(object):
         kvs_val = "kvs." + alias_val
 
         return df.select(by_cols + [kvs]).select(by_cols + [kvs_key, kvs_val])
+
+    """
+    Covert from rows selected by col_name to array
+    """
+
+    @classmethod
+    def rows_to_array(cls, df, col_name: str):
+        rdd = df.select(df[col_name]).rdd
+        arr = rdd.flatMap(lambda row: row).collect()
+        return arr

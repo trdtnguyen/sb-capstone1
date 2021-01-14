@@ -4,6 +4,13 @@ Extract Covid-19 data from Johns Hopkins' data source
 __version__ = '0.1'
 __author__ = 'Dat Nguyen'
 
+from GlobalUtil import GlobalUtil
+
+from pyspark.sql import SparkSession, Row
+
+from pyspark.sql.types import ArrayType, StructField, StructType, StringType, IntegerType, FloatType, DateType
+from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
+
 from db.DB import DB
 import pandas as pd
 import configparser
@@ -25,6 +32,18 @@ DEFAULT_ERROR_TICKER_FILE='sp500_error_tickers.txt'
 def convert_date(in_date):
     d_list = in_date.split('/')
     out_date = '20' + d_list[2] + '-' + d_list[0] + '-' + d_list[1]
+"""
+Convert from datetime to dateid
+"""
+def from_date_to_dateid(date: datetime):
+    date_str = date.strftime('%Y-%m-%d')
+    date_str = date_str.replace('-', '')
+    dateid = int(date_str)
+    return dateid
+
+def get_month_name(date):
+    month_name = date.strftime('%B')
+    return month_name
 
 """
 Helper function for iterating from stat_date to end_date
@@ -35,11 +54,16 @@ def daterange(start_date, end_date):
         yield start_date + timedelta(n)
 
 class Stock:
-    def __init__(self):
-        user = env.get('MYSQL_USER')
-        db_name = env.get('MYSQL_DATABASE')
-        pw = env.get('MYSQL_PASSWORD')
-        host = env.get('MYSQL_HOST')
+    def __init__(self, spark: SparkSession):
+        # user = env.get('MYSQL_USER')
+        # db_name = env.get('MYSQL_DATABASE')
+        # pw = env.get('MYSQL_PASSWORD')
+        # host = env.get('MYSQL_HOST')
+
+        user = GU.CONFIG['DATABASE']['MYSQL_USER']
+        db_name = GU.CONFIG['DATABASE']['MYSQL_DATABASE']
+        pw = GU.CONFIG['DATABASE']['MYSQL_PASSWORD']
+        host = GU.CONFIG['DATABASE']['MYSQL_HOST']
 
         config = configparser.ConfigParser()
         # config.read('config.cnf')
@@ -50,6 +74,9 @@ class Stock:
         self.conn = self.db.get_conn()
         self.logger = self.db.get_logger()
 
+        # spark
+        self.spark = spark
+
     """
     Extract list of sp500 tickers and write the list on file
     Return: the list of sp500 tickers
@@ -58,11 +85,21 @@ class Stock:
         conn = self.conn
         logger = self.logger
 
-        TABLE_NAME = 'stock_ticker_raw'
+        TICKER_TABLE_NAME = 'stock_ticker_raw'
 
-        config = configparser.ConfigParser()
-        config.read('/root/airflow/config.cnf')
-        url = config['STOCK']['STOCK_SP500_URL']
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, TICKER_TABLE_NAME)
+        if is_resume_extract:
+            print(f'Table {TICKER_TABLE_NAME} has already existed. Do nothing now')
+            return
+        end_date = datetime.now()
+        latest_df = GU.update_latest_data(latest_df, TICKER_TABLE_NAME, end_date)
+        # config = configparser.ConfigParser()
+        # config.read('/root/airflow/config.cnf')
+        url = GU.CONFIG['STOCK']['STOCK_SP500_URL']
 
         #resp = requests.get('http://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
         resp = requests.get(url)
@@ -83,12 +120,12 @@ class Stock:
             insert_val['subindustry'] = (row.findAll('td')[4].text).rstrip('\n')  # GICS Sub-industry
             insert_val['hq_location'] = row.findAll('td')[5].text.rstrip('\n')  # HQ location
 
-            if len(row.findAll('td')[6].text) > 12:
-                insert_val['date_first_added'] = row.findAll('td')[6].text.rstrip('\n')[:10]  # date_first_added
-            elif len(row.findAll('td')[6].text) == 0:
-                insert_val['date_first_added'] = '1000-01-01' # NULL
-            else:
-                insert_val['date_first_added'] = (row.findAll('td')[6].text).rstrip('\n')  # date_first_added
+            # if len(row.findAll('td')[6].text) > 12:
+            #     insert_val['date_first_added'] = row.findAll('td')[6].text.rstrip('\n')[:10]  # date_first_added
+            # elif len(row.findAll('td')[6].text) == 0:
+            #     insert_val['date_first_added'] = '1000-01-01' # NULL
+            # else:
+            #     insert_val['date_first_added'] = (row.findAll('td')[6].text).rstrip('\n')  # date_first_added
             insert_val['cik'] = (row.findAll('td')[7].text).rstrip('\n')  # cik
             insert_val['founded_year'] = int((row.findAll('td')[7].text).rstrip('\n'))  # founded_year
 
@@ -100,11 +137,14 @@ class Stock:
 
         df = pd.DataFrame(insert_list)
         try:
-            df.to_sql(TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+            df.to_sql(TICKER_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
             # manually insert a dictionary will not work due to the limitation number of records insert
             # results = conn.execute(table.insert(), insert_list)
+
+            print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+            GU.write_latest_data(latest_df, logger)
         except ValueError:
-            logger.error(f'Error Query when extracting data for {TABLE_NAME} table')
+            logger.error(f'Error Query when extracting data for {TICKER_TABLE_NAME} table')
         return tickers
 
 
@@ -181,43 +221,59 @@ class Stock:
             logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
         print('Done.')
 
-    def extract_batch_stock(self,
-                      reload=True, ticker_file=DEFAULT_TICKER_FILE,
-                      start_date=datetime.now(), end_date=datetime.now()):
-        conn = self.conn
+    def extract_batch_stock(self):
+        ticker_file = DEFAULT_TICKER_FILE
         logger = self.logger
         RAW_TABLE_NAME = 'stock_price_raw'
+        TICKER_TABLE_NAME = 'stock_ticker_raw'
+
+        is_resume_extract = False
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+        start_date = datetime(2020, 1, 1)
+
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date =\
+            GU.read_latest_data(spark, RAW_TABLE_NAME)
+
+        end_date = datetime.now()
+        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+
+        if is_resume_extract:
+            # we only compare two dates by day, month, year excluding time
+            if latest_date.day == end_date.day and \
+                    latest_date.month == end_date.month and \
+                    latest_date.year == end_date.year:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                start_date = latest_date
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
+
         # 1. Resuming extract data. We don't need to extract data that we had in the database
         #Get the latest date from database
         s = text("SELECT date "
                  f"FROM {RAW_TABLE_NAME} "
                  "ORDER BY date DESC "
                  "LIMIT 1")
-        try:
-            ret_list = conn.execute(s).fetchall()
-            df_tem = pd.DataFrame(ret_list)
-            if len(df_tem) > 0:
-                latest_date = df_tem.iloc[0][0]
-                if latest_date > end_date:
-                    print(f'database last update on {latest_date} '
-                          f'that is later than the end date {end_date}. No further extract needed')
-                    return
-                else:
-                    print(f'set start_date to {latest_date}')
-                    start_date = latest_date
 
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when get latest date in {RAW_TABLE_NAME}')
-            print(e)
+        # Extract tickers from datasource if it not existed
+        ticker_end_date_arr = latest_df.filter(latest_df['table_name'] == TICKER_TABLE_NAME).collect()
+        if len(ticker_end_date_arr) > 0:
+            assert len(ticker_end_date_arr) == 1
+            ticker_end_date = ticker_end_date_arr[0][1]
+            if ticker_end_date == GU.START_DEFAULT_DATE:
+                self.extract_sp500_tickers()
 
-        # 2. Get list of tickers
-        if reload:
-            tickers = self.extract_sp500_tickers()
-        else:
-            #read from file
-            with open(ticker_file, "r") as f:
-                tickers = f.readlines()
-                #tickers = pickle.load(f)
+        ticker_df = GU.read_from_db(spark, TICKER_TABLE_NAME)
+        # Flatten the query result to get list of tickers
+        tickers = GU.rows_to_array(ticker_df, 'ticker')
 
         #tickers = ['AAPL', 'MSFT', '^GSPC']
         # start = dt.datetime(2020, 1, 1)
@@ -225,21 +281,16 @@ class Stock:
         start_date_str = start_date.strftime('%Y-%m-%d')
         end_date_str = end_date.strftime('%Y-%m-%d')
 
-        COL_NAMES = ['stock_ticker', 'date', 'High', 'Low', 'Open',
-                     'Close', 'Volume', 'adj_close']
-
         print('Extract stocks ...', end=' ')
-
         total_tickers = len(tickers)
         total_ticker_perc = int(total_tickers / 10)
 
         # 3. Extract data for all stickers
-
-
         noinfo_tickers = []
 
         pct = 0
         cnt = 0
+        stock_df = None
         for ticker in tickers:
             print (f'extract data for {ticker} ...', end=' ')
             insert_list = []
@@ -247,8 +298,19 @@ class Stock:
             if cnt % total_ticker_perc == 0:
                 print(f'{int(cnt/total_ticker_perc)}', end=' ')
             try:
+                # Read data from Yahoo Finance service
+                # cur_stock_df = data.DataReader(ticker, 'yahoo', start_date_str, end_date_str)
                 stock_df = data.DataReader(ticker, 'yahoo', start_date_str, end_date_str)
-                # this data frame has date as index
+                # # Add columns into pandas Dataframe
+                # cur_stock_df['stock_ticker'] = ticker
+                # cur_stock_df['date'] = list(cur_stock_df.index)
+                # # Append the result into the final Dataframe
+                # if stock_df is None:
+                #     stock_df = cur_stock_df
+                # else:
+                #     stock_df = stock_df.append(cur_stock_df, ignore_index=True)
+
+                # # this data frame has date as index
                 for i, row in stock_df.iterrows():
                     insert_val = {}
                     insert_val['stock_ticker'] = ticker
@@ -266,9 +328,10 @@ class Stock:
                 noinfo_tickers.append(ticker)
                 continue
             print('Done. Insert into database ...', end=' ')
+
             df = pd.DataFrame(insert_list)
             try:
-                df.to_sql(RAW_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+                df.to_sql(RAW_TABLE_NAME, self.conn, schema=None, if_exists='append', index=False)
                 # manually insert a dictionary will not work due to the limitation number of records insert
                 # results = conn.execute(table.insert(), insert_list)
             except ValueError:
@@ -276,12 +339,22 @@ class Stock:
             print('Done.')
             #loop the next ticker
 
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        # print(stock_df.shape)
+        # df = spark.createDataFrame(stock_df)
+        # print(f'Write to table {RAW_TABLE_NAME}...')
+        # GU.write_to_db(df, RAW_TABLE_NAME, logger)
         # write the ticker list that has no info
         if len(noinfo_tickers) > 0:
             print(f"there are {len(noinfo_tickers)} tickers don't have info")
             with open(DEFAULT_ERROR_TICKER_FILE, "w") as f_error:
                 f_error.writelines("%s\n" % ticker for ticker in noinfo_tickers)
 
+
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
         print('Extract all data Done.')
 
 
@@ -300,50 +373,109 @@ class Stock:
         FACT_TABLE_NAME = 'stock_price_fact'
         MONTHLY_FACT_TABLE_NAME = 'stock_price_monthly_fact'
 
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, MONTHLY_FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
+        end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        fact_df = GU.read_from_db(spark, FACT_TABLE_NAME)
+
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = fact_df.count()
+                fact_df = fact_df.filter(
+                    fact_df['date'] > latest_date
+                )
+                after = fact_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 3 Transform
+        #########
         print(f'Transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
-        s = text("SELECT stock_ticker, YEAR(date), MONTH(date), MONTHNAME(date), "
-                 "AVG(High) , AVG(Low), AVG(Open) , AVG(Close), SUM(Volume) , AVG(adj_close) "
-                 f"FROM {FACT_TABLE_NAME} "
-                 "GROUP BY stock_ticker, YEAR(date), MONTH(date), MONTHNAME(date) "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            # transform the datetime to dateid
-            insert_list = []
-            for row in ret_list:
-                insert_val = {}
+        fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
 
-                year = row[1]
-                month = row[2]
-                insert_date = datetime(year, month, 1)
-                date_str = insert_date.strftime('%Y-%m-%d')
+        s = "SELECT dateid, stock_ticker, YEAR(date), MONTH(date), " +\
+                 "AVG(High) , AVG(Low), AVG(Open) , AVG(Close), SUM(Volume) , AVG(adj_close) " +\
+                 f"FROM {FACT_TABLE_NAME} " +\
+                 "GROUP BY dateid, stock_ticker, YEAR(date), MONTH(date) " + \
+                 "ORDER BY dateid, stock_ticker, YEAR(date), MONTH(date) "
 
-                dateid = int(date_str.replace('-', ''))
-                insert_val['dateid'] = dateid
-                insert_val['stock_ticker'] = row[0]
-                insert_val['date'] = insert_date
-                insert_val['year'] = year
-                insert_val['month'] = month
-                insert_val['month_name'] = row[3]
-                insert_val['High'] = row[4]
-                insert_val['Low'] = row[5]
-                insert_val['Open'] = row[6]
-                insert_val['Close'] = row[7]
-                insert_val['Volume'] = row[8]
-                insert_val['adj_close'] = row[9]
+        df = spark.sql(s)
+        # Change columns name by index to match the schema
+        df = df.toDF('dateid', 'stock_ticker', 'year', 'month',
+                     'High', 'Low', 'Open', 'Close', 'Volume', 'adj_close')
+        first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('date', first_day_udf(df['year'], df['month']))
+        df = df.withColumn('month_name', month_name_udf(df['date']))
 
-                insert_list.append(insert_val)
-
-            df = pd.DataFrame(insert_list)
-            if len(df) > 0:
-                df.to_sql(MONTHLY_FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}')
-            print(e)
+        # Reorder the columns to match the schema
+        df = df.select(df['dateid'], df['stock_ticker'], df['date'], df['year'], df['month'],
+                       df['month_name'], df['High'], df['Low'], df['Open'], df['Close'],
+                       df['Volume'], df['adj_close'])
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
+        GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
         print('Done.')
+        # try:
+        #     result = conn.execute(s)
+        #     keys = result.keys()
+        #     ret_list = result.fetchall()
+        #     # transform the datetime to dateid
+        #     insert_list = []
+        #     for row in ret_list:
+        #         insert_val = {}
+        #
+        #         year = row[1]
+        #         month = row[2]
+        #         insert_date = datetime(year, month, 1)
+        #         date_str = insert_date.strftime('%Y-%m-%d')
+        #
+        #         dateid = int(date_str.replace('-', ''))
+        #         insert_val['dateid'] = dateid
+        #         insert_val['stock_ticker'] = row[0]
+        #         insert_val['date'] = insert_date
+        #         insert_val['year'] = year
+        #         insert_val['month'] = month
+        #         insert_val['month_name'] = row[3]
+        #         insert_val['High'] = row[4]
+        #         insert_val['Low'] = row[5]
+        #         insert_val['Open'] = row[6]
+        #         insert_val['Close'] = row[7]
+        #         insert_val['Volume'] = row[8]
+        #         insert_val['adj_close'] = row[9]
+        #
+        #         insert_list.append(insert_val)
+        #
+        #     df = pd.DataFrame(insert_list)
+        #     if len(df) > 0:
+        #         # df.to_sql(MONTHLY_FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+        #         df.to_sql(MONTHLY_FACT_TABLE_NAME, conn, schema=None, if_exists='replace', index=False)
+        # except pymysql.OperationalError as e:
+        #     logger.error(f'Error Query when transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}')
+        #     print(e)
+        # print('Done.')
 
 
     """
@@ -351,54 +483,122 @@ class Stock:
         extract_sp500_tickers ->
         extract_batch_stock() ->
         transform_raw_to_fact_stock()
-
+        
+        Read raw data.
+        Add a dateid column
+        Write back data
     """
-
-
     def transform_raw_to_fact_stock(self):
         conn = self.conn
         logger = self.logger
         RAW_TABLE_NAME = 'stock_price_raw'
         FACT_TABLE_NAME = 'stock_price_fact'
 
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
+        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = raw_df.count()
+                raw_df = raw_df.filter(
+                    raw_df['date'] > latest_date
+                )
+                after = raw_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 3 Transform
+        #########
+        # Add dateid column
+        dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
+        df = raw_df.withColumn('dateid', dateid_udf(raw_df['date']))
+        # Reorder columns
+        df = df.select(df['dateid'], df['stock_ticker'], df['date'],
+                       df['High'], df['Low'], df['Open'], df['Close'],
+                       df['Volume'], df['adj_close'])
+
         print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
-        s = text("SELECT stock_ticker, date, High, Low, Open, Close, Volume, adj_close "
-                 f"FROM {RAW_TABLE_NAME} "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            # transform the datetime to dateid
-            insert_list = []
-            for row in ret_list:
-                insert_val = {}
-
-                date = row[1]
-                date_str = date.strftime('%Y-%m-%d')
-                date_str = date_str.replace('-', '')
-                dateid = int(date_str)
-                insert_val['dateid'] = dateid
-                insert_val['stock_ticker'] = row[0]
-                insert_val['date'] = row[1]
-                insert_val['High'] = row[2]
-                insert_val['Low'] = row[3]
-                insert_val['Open'] = row[4]
-                insert_val['Close'] = row[5]
-                insert_val['Volume'] = row[6]
-                insert_val['adj_close'] = row[7]
-
-                insert_list.append(insert_val)
-
-            df = pd.DataFrame(insert_list)
-            if len(df) > 0:
-                df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
-            print(e)
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {FACT_TABLE_NAME}...')
+        GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
         print('Done.')
-#extract_sp500_tickers()
+
+        # s = text("SELECT stock_ticker, date, High, Low, Open, Close, Volume, adj_close "
+        #          f"FROM {RAW_TABLE_NAME} "
+        #          )
+        # try:
+        #     result = conn.execute(s)
+        #     keys = result.keys()
+        #     ret_list = result.fetchall()
+        #     # transform the datetime to dateid
+        #     insert_list = []
+        #     for row in ret_list:
+        #         insert_val = {}
+        #
+        #         date = row[1]
+        #         date_str = date.strftime('%Y-%m-%d')
+        #         date_str = date_str.replace('-', '')
+        #         dateid = int(date_str)
+        #         insert_val['dateid'] = dateid
+        #         insert_val['stock_ticker'] = row[0]
+        #         insert_val['date'] = row[1]
+        #         insert_val['High'] = row[2]
+        #         insert_val['Low'] = row[3]
+        #         insert_val['Open'] = row[4]
+        #         insert_val['Close'] = row[5]
+        #         insert_val['Volume'] = row[6]
+        #         insert_val['adj_close'] = row[7]
+        #
+        #         insert_list.append(insert_val)
+        #
+        #     df = pd.DataFrame(insert_list)
+        #     if len(df) > 0:
+        #         df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+        # except pymysql.OperationalError as e:
+        #     logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
+        #     print(e)
+        # print('Done.')
+
+GU = GlobalUtil.instance()
+spark = SparkSession \
+    .builder \
+    .appName("sb-miniproject6") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+# Enable Arrow-based columnar data transfers
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+
+stock = Stock(spark)
+
+stock.extract_sp500_tickers()
+stock.extract_batch_stock()
+stock.transform_raw_to_fact_stock()
+stock.aggregate_fact_to_monthly_fact_stock()
 
 # start_date = datetime(2020, 1, 1)
 # end_date = datetime(2020, 10, 23)
