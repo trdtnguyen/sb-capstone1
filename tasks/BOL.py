@@ -1,3 +1,10 @@
+from GlobalUtil import GlobalUtil
+
+from pyspark.sql import SparkSession, Row
+
+from pyspark.sql.types import ArrayType, StructField, StructType, StringType, IntegerType, FloatType, DateType
+from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
+
 from db.DB import DB
 import pandas as pd
 import configparser
@@ -20,14 +27,21 @@ def BOL_period_to_date(year, period):
     str_m = period[1:3]
     date = datetime(year, int(str_m), 1)
     return date
-
+"""
+Convert from datetime to dateid
+"""
+def from_date_to_dateid(date: datetime):
+    date_str = date.strftime('%Y-%m-%d')
+    date_str = date_str.replace('-', '')
+    dateid = int(date_str)
+    return dateid
 
 class BOL:
-    def __init__(self):
-        user = env.get('MYSQL_USER')
-        db_name = env.get('MYSQL_DATABASE')
-        pw = env.get('MYSQL_PASSWORD')
-        host = env.get('MYSQL_HOST')
+    def __init__(self, spark):
+        user = GU.CONFIG['DATABASE']['MYSQL_USER']
+        db_name = GU.CONFIG['DATABASE']['MYSQL_DATABASE']
+        pw = GU.CONFIG['DATABASE']['MYSQL_PASSWORD']
+        host = GU.CONFIG['DATABASE']['MYSQL_HOST']
 
         config = configparser.ConfigParser()
         # config.read('config.cnf')
@@ -37,65 +51,112 @@ class BOL:
         self.db = DB(str_conn)
         self.conn = self.db.get_conn()
         self.logger = self.db.get_logger()
-
-    def extract_BOL(self,
-                    start_year=datetime.now().year, end_year=datetime.now().year):
+        self.spark = spark
+    """
+    Read list of interested feature from dim table then extract each feature data
+    """
+    def extract_BOL(self):
         conn = self.conn
         logger = self.logger
         RAW_TABLE_NAME = 'bol_raw'
         DIM_TABLE_NAME = 'bol_series_dim'
-        # 1. Resuming extract data.
-        s = text("SELECT year "
-                 f"FROM {RAW_TABLE_NAME} "
-                 "ORDER BY year DESC "
-                 "LIMIT 1")
 
-        try:
-            ret_list = conn.execute(s).fetchall()
-            df_tem = pd.DataFrame(ret_list)
-            if len(df_tem) > 0:
-                latest_year = df_tem.iloc[0][0]
-                if latest_year > end_year:
-                    print(f'database last update on {latest_year} '
-                          f'that is later than the end date {end_year}. No further extract needed')
-                    return
-                else:
-                    print(f'set start_year to {latest_year}')
-                    start_year = latest_year
+        is_resume_extract = False
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+        start_date = datetime(2011, 1, 1)
 
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when get latest year in {RAW_TABLE_NAME}')
-            print(e)
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, RAW_TABLE_NAME)
 
-        headers = {'Content-type': 'application/json'}
+        end_date = datetime.now()
+        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
 
-        # 2. Read series
-        print('Read series ...', end=  " ")
-        s = text("SELECT series_id "
-                 f"FROM {DIM_TABLE_NAME} "
-                 )
-            #series_ids = ['CUUR0000SA0', 'SUUR0000SA0']
-        try:
-            ret_list = conn.execute(s).fetchall()
-            df_tem = pd.DataFrame(ret_list)
-            if len(df_tem) > 0:
-                series_ids_tem = df_tem.values.tolist() # Get array of array
-                series_ids = [arr[0] for arr in series_ids_tem]
-            else:
-                logger.error('The series_ids is empty')
-                print('The series_ids is empty')
+        if is_resume_extract:
+            # we only compare two dates by month, year excluding time
+            if latest_date.month == end_date.month and \
+                    latest_date.year == end_date.year:
+                print(f'The system has updated data up to year {end_date.year}, '
+                      f'month {end_date.month}. No further extract needed.')
                 return
+            else:
+                start_date = latest_date
+        start_year = start_date.year
+        # Note that the API allow maximum 10 years range
 
-        except pymysql.OperationalError as e:
-            logger.error('Error Query when get latest year in BOL_raw')
-            print(e)
-        print("Done. Number of series: ", len(series_ids))
-        # 3 Extract Data using API
+        end_year = end_date.year
+
+        if start_year + 10 < end_year:
+            start_year = end_year - 10
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
+
+
+
+        # # 1. Resuming extract data.
+        # s = text("SELECT year "
+        #          f"FROM {RAW_TABLE_NAME} "
+        #          "ORDER BY year DESC "
+        #          "LIMIT 1")
+        #
+        # # try:
+        #     ret_list = conn.execute(s).fetchall()
+        #     df_tem = pd.DataFrame(ret_list)
+        #     if len(df_tem) > 0:
+        #         latest_year = df_tem.iloc[0][0]
+        #         if latest_year > end_year:
+        #             print(f'database last update on {latest_year} '
+        #                   f'that is later than the end date {end_year}. No further extract needed')
+        #             return
+        #         else:
+        #             print(f'set start_year to {latest_year}')
+        #             start_year = latest_year
+        #
+        # except pymysql.OperationalError as e:
+        #     logger.error(f'Error Query when get latest year in {RAW_TABLE_NAME}')
+        #     print(e)
+
+        #########
+        ### Step 3 Read series from database
+        #########
+        print('Read series ...', end=  " ")
+        dim_df = GU.read_from_db(spark, DIM_TABLE_NAME)
+        # s = text("SELECT series_id "
+        #          f"FROM {DIM_TABLE_NAME} "
+        #          )
+        #     #series_ids = ['CUUR0000SA0', 'SUUR0000SA0']
+        # try:
+        #     ret_list = conn.execute(s).fetchall()
+        #     df_tem = pd.DataFrame(ret_list)
+        #     if len(df_tem) > 0:
+        #         series_ids_tem = df_tem.values.tolist() # Get array of array
+        #         series_ids = [arr[0] for arr in series_ids_tem]
+        #     else:
+        #         logger.error('The series_ids is empty')
+        #         print('The series_ids is empty')
+        #         return
+        #
+        # except pymysql.OperationalError as e:
+        #     logger.error('Error Query when get latest year in BOL_raw')
+        #     print(e)
+        # print("Done. Number of series: ", len(series_ids))
+
+        #########
+        ### Step 4 Extract data from BOL using API
+        #########
         insert_list = []
+        series_ids = GU.rows_to_array(dim_df, 'series_id')
 
-        API_url = 'https://api.bls.gov/publicAPI/v2/timeseries/data/'
+        # API_url = 'https://api.bls.gov/publicAPI/v2/timeseries/data/'
+        API_url = GU.CONFIG['BOL']['BOL_API_URL']
         data = json.dumps({"seriesid": series_ids, "startyear": str(start_year), "endyear": str(end_year)})
 
+        headers = {'Content-type': 'application/json'}
         p = requests.post(API_url, data=data, headers=headers)
         json_data = json.loads(p.text)
         for series in json_data['Results']['series']:
@@ -114,6 +175,9 @@ class BOL:
                 insert_val['footnotes'] = footnotes
                 insert_list.append(insert_val)
 
+        ####################################
+        # Step 5 Write to Database
+        ####################################
         df = pd.DataFrame(insert_list)
         print("Extract data Done.")
         print("Insert to database...", end=' ')
@@ -123,6 +187,9 @@ class BOL:
             # results = conn.execute(table.insert(), insert_list)
         except ValueError:
             logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
+
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
         print('Done.')
 
     def transform_raw_to_fact_bol(self):
@@ -131,41 +198,99 @@ class BOL:
         RAW_TABLE_NAME = 'bol_raw'
         FACT_TABLE_NAME = 'bol_series_fact'
 
+        latest_date = GU.START_DEFAULT_DATE
+        end_date = GU.START_DEFAULT_DATE
+
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
-        print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
-        s = text("SELECT series_id, year, period, value, footnotes "
-                 f"FROM {RAW_TABLE_NAME} "
-                 )
-        try:
-            result = conn.execute(s)
-            keys = result.keys()
-            ret_list = result.fetchall()
-            # transform the datetime to dateid
-            insert_list = []
-            for row in ret_list:
-                insert_val = {}
+        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
 
-                year = row[1]
-                period = row[2]
-                date = BOL_period_to_date(year, period)
-                date_str = date.strftime('%Y-%m-%d')
-                date_str = date_str.replace('-', '')
-                dateid = int(date_str)
-                insert_val['dateid'] = dateid
+        #Note that the raw dataset from datasource is monthly update
+        if is_resume_extract:
+            if latest_date.year == end_date.year and latest_date.month == end_date.month:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
 
-                insert_val['series_id'] = row[0]
-                insert_val['date'] = date
-                insert_val['value'] = row[3]
-                insert_val['footnotes'] = row[4]
+        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 3 Transform. Add dateid and date column into the raw table
+        #########
 
-                insert_list.append(insert_val)
+        # Add date column
+        date_udf = udf(lambda year, period: BOL_period_to_date(year, period), DateType())
+        df = raw_df.withColumn('date', date_udf(raw_df['year'], raw_df['period']))
+        # Add dateid column
+        dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
+        df = df.withColumn('dateid', dateid_udf(df['date']))
 
-            df = pd.DataFrame(insert_list)
-            if len(df) > 0:
-                df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        except pymysql.OperationalError as e:
-            logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
-            print(e)
+        # Reorder columns to match the schema
+        df = df.select(df['dateid'], df['series_id'], df['date'], df['value'], df['footnotes'])
+
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {FACT_TABLE_NAME}...')
+        GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
+        GU.write_latest_data(latest_df, logger)
+        print('Done.')
+
+        # # 1. Transform from raw to fact table
+        # print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
+        # s = text("SELECT series_id, year, period, value, footnotes "
+        #          f"FROM {RAW_TABLE_NAME} "
+        #          )
+        # try:
+        #     result = conn.execute(s)
+        #     keys = result.keys()
+        #     ret_list = result.fetchall()
+        #     # transform the datetime to dateid
+        #     insert_list = []
+        #     for row in ret_list:
+        #         insert_val = {}
+        #
+        #         year = row[1]
+        #         period = row[2]
+        #         date = BOL_period_to_date(year, period)
+        #         date_str = date.strftime('%Y-%m-%d')
+        #         date_str = date_str.replace('-', '')
+        #         dateid = int(date_str)
+        #         insert_val['dateid'] = dateid
+        #
+        #         insert_val['series_id'] = row[0]
+        #         insert_val['date'] = date
+        #         insert_val['value'] = row[3]
+        #         insert_val['footnotes'] = row[4]
+        #
+        #         insert_list.append(insert_val)
+        #
+        #     df = pd.DataFrame(insert_list)
+        #     if len(df) > 0:
+        #         df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+        # except pymysql.OperationalError as e:
+        #     logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
+        #     print(e)
         print('Done.')
 
 #extract_BOL(conn, logger, 2010, 2020)
+GU = GlobalUtil.instance()
+spark = SparkSession \
+    .builder \
+    .appName("sb-miniproject6") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+# Enable Arrow-based columnar data transfers
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+
+bol = BOL(spark)
+
+bol.extract_BOL()
+bol.transform_raw_to_fact_bol()
