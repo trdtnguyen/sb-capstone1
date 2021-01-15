@@ -16,8 +16,7 @@ import configparser
 from datetime import timedelta, datetime
 import os
 from os import environ as env
-import pymysql
-from sqlalchemy.sql import text
+
 
 """
    Convert from string 'yyyy/mm/dd' to datetime
@@ -85,7 +84,7 @@ class Covid:
         file_name1 = os.path.basename(url1)
 
         # Unlike pandas, read csv file from https in Spark require more steps
-        spark.sparkContext.addFile(url1)
+        self.spark.sparkContext.addFile(url1)
         # confirmed_us_df = self.spark.read.csv(url1, header=True, inferSchema=True) # This will not work
         confirmed_us_df = self.spark.read.csv('file://' + SparkFiles.get(file_name1), header=True, inferSchema=True)
         ncols1 = len(confirmed_us_df.columns)
@@ -94,7 +93,7 @@ class Covid:
         url2 = GU.CONFIG['COVID19']['COVID19_DEATH_US_URL']
         file_name2 = os.path.basename(url2)
         # death_us_df = pd.read_csv(url2)
-        spark.sparkContext.addFile(url2)
+        self.spark.sparkContext.addFile(url2)
         # death_us_df = self.spark.read.csv(url2, header=True, inferSchema=True)
         death_us_df = self.spark.read.csv('file://' + SparkFiles.get(file_name2), header=True, inferSchema=True)
         ncols2 = len(death_us_df.columns)
@@ -113,7 +112,7 @@ class Covid:
         # driver_name = 'com.mysql.jdbc.Driver' # Old driver
 
         print('Read from database ...')
-        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, RAW_TABLE_NAME)
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -159,6 +158,7 @@ class Covid:
                 death_us_df['Lat'], death_us_df['Long_'],
                 death_us_df['Combined_Key'], death_us_df['Population']
             )
+            latest_df = GU.update_latest_data(latest_df, DIM_TABLE_NAME, end_date)
         # dim_df.show()
         ####################################
         ## Transopse and Join
@@ -196,7 +196,7 @@ class Covid:
 
         if not is_resume_extract:
             print(f'Write to table {DIM_TABLE_NAME} ...')
-            GU.write_to_db(df, DIM_TABLE_NAME, logger)
+            GU.write_to_db(dim_df, DIM_TABLE_NAME, logger)
 
         print(f'Write to table {RAW_TABLE_NAME} ...')
         GU.write_to_db(df, RAW_TABLE_NAME, logger)
@@ -213,12 +213,12 @@ class Covid:
         #######################################
         url1 = GU.CONFIG['COVID19']['COVID19_CONFIRMED_GLOBAL_URL']
         file_name1 = os.path.basename(url1)
-        spark.sparkContext.addFile(url1)
+        self.spark.sparkContext.addFile(url1)
         confirmed_df = self.spark.read.csv('file://' + SparkFiles.get(file_name1), header=True, inferSchema=True)
 
         url2 = GU.CONFIG['COVID19']['COVID19_DEATH_GLOBAL_URL']
         file_name2 = os.path.basename(url2)
-        spark.sparkContext.addFile(url2)
+        self.spark.sparkContext.addFile(url2)
         death_df = self.spark.read.csv('file://' + SparkFiles.get(file_name2), header=True, inferSchema=True)
 
         # Get latest date from raw table
@@ -233,7 +233,7 @@ class Covid:
         # Step 2 Read from database to determine the last written data point
         #######################################
         print('Read from database ...')
-        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, RAW_TABLE_NAME)
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(self.spark, RAW_TABLE_NAME)
         latest_df = latest_df.cache()
         latest_df.count()
 
@@ -323,7 +323,7 @@ class Covid:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, MONTHLY_FACT_TABLE_NAME)
+            GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
 
 
         end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
@@ -331,7 +331,7 @@ class Covid:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        fact_df = GU.read_from_db(spark, FACT_TABLE_NAME)
+        fact_df = GU.read_from_db(self.spark, FACT_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -359,7 +359,7 @@ class Covid:
             f"FROM {FACT_TABLE_NAME} " + \
             "GROUP BY UID, YEAR(date), MONTH(date)"
 
-        df = spark.sql(s)
+        df = self.spark.sql(s)
         # Change columns name by index to match the schema
         df = df.toDF('UID', 'year', 'month', 'confirmed', 'deaths')
 
@@ -408,7 +408,7 @@ class Covid:
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
-        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, FACT_TABLE_NAME)
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
 
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
@@ -416,7 +416,7 @@ class Covid:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -476,7 +476,7 @@ class Covid:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, DIM_TABLE_NAME)
+            GU.read_latest_data(self.spark, DIM_TABLE_NAME)
         if is_resume_extract:
             print(f'Dimensional table {DIM_TABLE_NAME} has been created. No further extract needed.')
             return
@@ -544,14 +544,14 @@ class Covid:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, MONTHLY_FACT_TABLE_NAME)
+            GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
 
         end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        fact_df = GU.read_from_db(spark, FACT_TABLE_NAME)
+        fact_df = GU.read_from_db(self.spark, FACT_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -579,7 +579,7 @@ class Covid:
             f"FROM {FACT_TABLE_NAME} " + \
             "GROUP BY dateid, country_code, YEAR(date), MONTH(date) " + \
             "ORDER BY dateid, country_code, YEAR(date), MONTH(date) "
-        df = spark.sql(s)
+        df = self.spark.sql(s)
         # Change columns name by index to match the schema
         df = df.toDF('dateid', 'country_code', 'year', 'month', 'confirmed', 'deaths')
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
@@ -628,15 +628,15 @@ class Covid:
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
-        latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, FACT_TABLE_NAME)
+        latest_df, is_resume_extract, latest_date = GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
-        dim_df = GU.read_from_db(spark, DIM_TABLE_NAME)
+        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
+        dim_df = GU.read_from_db(self.spark, DIM_TABLE_NAME)
 
         raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
         dim_df.createOrReplaceTempView(DIM_TABLE_NAME)
@@ -674,7 +674,7 @@ class Covid:
                  f"FROM  {RAW_TABLE_NAME} " +\
                  "GROUP BY Country_Region, date " +\
                  "ORDER BY date, Country_Region"
-        trans_df = spark.sql(s)
+        trans_df = self.spark.sql(s)
         trans_df = trans_df.toDF('Country_Region', 'date', 'confirmed', 'deaths')
 
         dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
@@ -686,7 +686,7 @@ class Covid:
             f"FROM  {temp_table_name} ,{DIM_TABLE_NAME} " + \
             f"WHERE {temp_table_name}.Country_Region = {DIM_TABLE_NAME}.Name " +\
             "ORDER BY dateid, country_code, date"
-        df = spark.sql(s)
+        df = self.spark.sql(s)
         df.show(n=50)
         ####################################
         # Step 4 Write to Database
@@ -699,30 +699,17 @@ class Covid:
 
 
 GU = GlobalUtil.instance()
-spark = SparkSession \
-    .builder \
-    .appName("sb-miniproject6") \
-    .config("spark.some.config.option", "some-value") \
-    .getOrCreate()
-covid = Covid(spark)
+# spark = SparkSession \
+#     .builder \
+#     .appName("sb-miniproject6") \
+#     .config("spark.some.config.option", "some-value") \
+#     .getOrCreate()
+# covid = Covid(spark)
 # covid.extract_us()
 # covid.transform_raw_to_fact_us()
-#covid.aggregate_fact_to_monthly_fact_us()
+# covid.aggregate_fact_to_monthly_fact_us()
 
 #covid.transform_raw_to_dim_country()
-covid.extract_global()
-covid.transform_raw_to_fact_global()
-covid.aggregate_fact_to_monthly_fact_global()
-
-
-
-# extract_us(conn, logger)
-# extract_global(conn, logger)
-
-# transform_raw_to_dim_us(conn, logger)
-# transform_raw_to_fact_us(conn, logger)
-# aggregate_fact_to_monthly_fact_us(conn,logger)
-
-# transform_raw_to_dim_country(conn, logger)
-# transform_raw_to_fact_global(conn, logger)
-# aggregate_fact_to_monthly_fact_global(conn, logger)
+#covid.extract_global()
+#covid.transform_raw_to_fact_global()
+#covid.aggregate_fact_to_monthly_fact_global()
