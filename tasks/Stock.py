@@ -91,7 +91,7 @@ class Stock:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, TICKER_TABLE_NAME)
+            GU.read_latest_data(self.spark, TICKER_TABLE_NAME)
         if is_resume_extract:
             print(f'Table {TICKER_TABLE_NAME} has already existed. Do nothing now')
             return
@@ -236,10 +236,10 @@ class Stock:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date =\
-            GU.read_latest_data(spark, RAW_TABLE_NAME)
+            GU.read_latest_data(self.spark, RAW_TABLE_NAME)
 
         end_date = datetime.now()
-        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             # we only compare two dates by day, month, year excluding time
@@ -271,7 +271,7 @@ class Stock:
             if ticker_end_date == GU.START_DEFAULT_DATE:
                 self.extract_sp500_tickers()
 
-        ticker_df = GU.read_from_db(spark, TICKER_TABLE_NAME)
+        ticker_df = GU.read_from_db(self.spark, TICKER_TABLE_NAME)
         # Flatten the query result to get list of tickers
         tickers = GU.rows_to_array(ticker_df, 'ticker')
 
@@ -379,14 +379,14 @@ class Stock:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, MONTHLY_FACT_TABLE_NAME)
+            GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
         end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        fact_df = GU.read_from_db(spark, FACT_TABLE_NAME)
+        fact_df = GU.read_from_db(self.spark, FACT_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -417,7 +417,7 @@ class Stock:
                  "GROUP BY dateid, stock_ticker, YEAR(date), MONTH(date) " + \
                  "ORDER BY dateid, stock_ticker, YEAR(date), MONTH(date) "
 
-        df = spark.sql(s)
+        df = self.spark.sql(s)
         # Change columns name by index to match the schema
         df = df.toDF('dateid', 'stock_ticker', 'year', 'month',
                      'High', 'Low', 'Open', 'Close', 'Volume', 'adj_close')
@@ -501,14 +501,14 @@ class Stock:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, FACT_TABLE_NAME)
+            GU.read_latest_data(self.spark, FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -585,20 +585,20 @@ class Stock:
         # print('Done.')
 
 GU = GlobalUtil.instance()
-spark = SparkSession \
-    .builder \
-    .appName("sb-miniproject6") \
-    .config("spark.some.config.option", "some-value") \
-    .getOrCreate()
-# Enable Arrow-based columnar data transfers
-spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
-
-stock = Stock(spark)
-
-stock.extract_sp500_tickers()
-stock.extract_batch_stock()
-stock.transform_raw_to_fact_stock()
-stock.aggregate_fact_to_monthly_fact_stock()
+# spark = SparkSession \
+#     .builder \
+#     .appName("sb-miniproject6") \
+#     .config("spark.some.config.option", "some-value") \
+#     .getOrCreate()
+# # Enable Arrow-based columnar data transfers
+# spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+#
+# stock = Stock(spark)
+#
+# stock.extract_sp500_tickers()
+# stock.extract_batch_stock()
+# stock.transform_raw_to_fact_stock()
+# stock.aggregate_fact_to_monthly_fact_stock()
 
 # start_date = datetime(2020, 1, 1)
 # end_date = datetime(2020, 10, 23)
