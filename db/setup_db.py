@@ -1,6 +1,7 @@
 import mysql.connector
 from os import environ as env
 
+print_traces = False
 try:
     connection = mysql.connector.connect(user=env.get('MYSQL_USER'),
                                          password=env.get('MYSQL_PASSWORD'),
@@ -16,7 +17,8 @@ try:
         for line in lines:
             sql_cmd = sql_cmd + " " + line
             if ';' in line:
-                print(f'execute sql_cmd: {sql_cmd}')
+                if print_traces:
+                    print(f'execute sql_cmd: {sql_cmd}')
                 cursor.execute(sql_cmd)
                 sql_cmd = ""
 
@@ -27,7 +29,8 @@ try:
         for line in lines:
             sql_cmd = sql_cmd + " " + line
             if ';' in line:
-                print(f'execute sql_cmd: {sql_cmd}')
+                if print_traces:
+                    print(f'execute sql_cmd: {sql_cmd}')
                 cursor.execute(sql_cmd)
                 sql_cmd = ""
 except Exception as error:
