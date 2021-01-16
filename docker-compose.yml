@@ -25,13 +25,14 @@ services:
             - "192.168.0.2:8082:8080"
         environment:
             - PYTHONPATH=/root/airflow
+            - COVID_PROJECT_PATH=/root/airflow 
         env_file:
             - config.cnf
         tty: true
         networks:
             - mynet
         volumes:
-            - airflowdata:/root/airflow/
+            - /root/airflow/
 networks:
     mynet:
 volumes:
