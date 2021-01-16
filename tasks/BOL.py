@@ -1,4 +1,4 @@
-from GlobalUtil import GlobalUtil
+from tasks.GlobalUtil import GlobalUtil
 
 from pyspark.sql import SparkSession, Row
 
@@ -70,10 +70,10 @@ class BOL:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, RAW_TABLE_NAME)
+            GU.read_latest_data(self.spark, RAW_TABLE_NAME)
 
         end_date = datetime.now()
-        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             # we only compare two dates by month, year excluding time
@@ -125,7 +125,7 @@ class BOL:
         ### Step 3 Read series from database
         #########
         print('Read series ...', end=  " ")
-        dim_df = GU.read_from_db(spark, DIM_TABLE_NAME)
+        dim_df = GU.read_from_db(self.spark, DIM_TABLE_NAME)
         # s = text("SELECT series_id "
         #          f"FROM {DIM_TABLE_NAME} "
         #          )
@@ -205,7 +205,7 @@ class BOL:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(spark, FACT_TABLE_NAME)
+            GU.read_latest_data(self.spark, FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
@@ -218,7 +218,7 @@ class BOL:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
 
-        raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
+        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
         latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
         #########
         ### Step 3 Transform. Add dateid and date column into the raw table
@@ -282,15 +282,15 @@ class BOL:
 
 #extract_BOL(conn, logger, 2010, 2020)
 GU = GlobalUtil.instance()
-spark = SparkSession \
-    .builder \
-    .appName("sb-miniproject6") \
-    .config("spark.some.config.option", "some-value") \
-    .getOrCreate()
-# Enable Arrow-based columnar data transfers
-spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
-
-bol = BOL(spark)
-
-bol.extract_BOL()
-bol.transform_raw_to_fact_bol()
+# spark = SparkSession \
+#     .builder \
+#     .appName("sb-miniproject6") \
+#     .config("spark.some.config.option", "some-value") \
+#     .getOrCreate()
+# # Enable Arrow-based columnar data transfers
+# spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+#
+# bol = BOL(spark)
+#
+# bol.extract_BOL()
+# bol.transform_raw_to_fact_bol()

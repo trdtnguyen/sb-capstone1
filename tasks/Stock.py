@@ -4,7 +4,7 @@ Extract Covid-19 data from Johns Hopkins' data source
 __version__ = '0.1'
 __author__ = 'Dat Nguyen'
 
-from GlobalUtil import GlobalUtil
+from tasks.GlobalUtil import GlobalUtil
 
 from pyspark.sql import SparkSession, Row
 
@@ -483,7 +483,7 @@ class Stock:
         extract_sp500_tickers ->
         extract_batch_stock() ->
         transform_raw_to_fact_stock()
-        
+
         Read raw data.
         Add a dateid column
         Write back data

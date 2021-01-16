@@ -4,7 +4,7 @@ Extract Covid-19 data from Johns Hopkins' data source
 __version__ = '0.1'
 __author__ = 'Dat Nguyen'
 
-from GlobalUtil import GlobalUtil
+from tasks.GlobalUtil import GlobalUtil
 # import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark import SparkFiles  # for reading csv file from https
