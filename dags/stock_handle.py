@@ -2,6 +2,7 @@ from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from datetime import timedelta, datetime
 from tasks.Stock import Stock
+from pyspark.sql import SparkSession
 
 WORKFLOW_DAG_ID = 'stock_handle'
 WORKFLOW_START_DATE = datetime.now() - timedelta(days=1)
@@ -27,7 +28,13 @@ dag = DAG(
     catchup=False,
 )
 
-stock = Stock()
+spark = SparkSession \
+    .builder \
+    .appName("CovidCor") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+stock = Stock(spark)
 
 t1 = PythonOperator(
         task_id='extract_sp500',
@@ -40,10 +47,10 @@ end_date = datetime.now()
 t2 = PythonOperator(
         task_id='extract_batch_stock',
         python_callable=stock.extract_batch_stock,
-        op_kwargs={'reload': True,
-               'ticker_file': Stock.DEFAULT_TICKER_FILE,
-               'start_date': start_date,
-               'end_date': end_date},
+        # op_kwargs={'reload': True,
+        #        'ticker_file': Stock.DEFAULT_TICKER_FILE,
+        #        'start_date': start_date,
+        #        'end_date': end_date},
         dag=dag,
 )
 

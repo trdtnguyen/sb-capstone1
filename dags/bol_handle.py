@@ -3,6 +3,8 @@ from airflow.operators.python_operator import PythonOperator
 from datetime import timedelta, datetime
 from tasks.BOL import BOL
 
+from pyspark.sql import SparkSession
+
 WORKFLOW_DAG_ID = 'bol_handle'
 WORKFLOW_START_DATE = datetime.now() - timedelta(days=1)
 
@@ -27,16 +29,22 @@ dag = DAG(
     catchup=False,
 )
 
-bol = BOL()
-start_year = 2010
-end_year = datetime.now().year
+spark = SparkSession \
+    .builder \
+    .appName("CovidCor") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+bol = BOL(spark)
+# start_year = 2010
+# end_year = datetime.now().year
 
 t1 = PythonOperator(
         task_id='extract_BOL',
         python_callable=bol.extract_BOL,
-        op_kwargs={'start_year': start_year,
-                   'end_year': end_year
-                  },
+        # op_kwargs={'start_year': start_year,
+        #            'end_year': end_year
+        #           },
         dag=dag,
 )
 

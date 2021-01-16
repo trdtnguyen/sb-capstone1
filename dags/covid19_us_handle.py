@@ -4,6 +4,7 @@ from airflow.operators.python_operator import PythonOperator
 from datetime import datetime
 from datetime import timedelta
 
+from pyspark.sql import SparkSession
 from tasks.Covid import Covid
 
 WORKFLOW_DAG_ID = 'covid19_us_handle'
@@ -30,7 +31,13 @@ dag = DAG(
     catchup=False,
 )
 
-covid = Covid()
+spark = SparkSession \
+    .builder \
+    .appName("sb-miniproject6") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+covid = Covid(spark)
 
 t1 = PythonOperator(
         task_id='extract_us',
