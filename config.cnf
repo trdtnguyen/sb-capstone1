@@ -1,3 +1,5 @@
+[CORE]
+PROJECT_NAME="CovidCorrelated"
 [DATABASE]
 MYSQL_DATABASE=covid19cor
 AIRFLOW_DATABASE=airflowdb
