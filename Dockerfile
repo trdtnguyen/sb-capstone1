@@ -31,6 +31,7 @@ RUN pip install  pandas-datareader
 RUN pip install  jupyter
 RUN pip install  bs4
 RUN pip install  sqlalchemy
+RUN pip install  pytest
 
 COPY setup.sh /root/airflow/setup.sh
 RUN chmod +x setup.sh
