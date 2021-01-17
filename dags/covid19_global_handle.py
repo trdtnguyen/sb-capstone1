@@ -6,6 +6,7 @@ from datetime import timedelta
 
 from tasks.Covid import Covid
 from pyspark.sql import SparkSession
+from tasks.GlobalUtil import GlobalUtil
 
 WORKFLOW_DAG_ID = 'covid19_global_handle'
 WORKFLOW_START_DATE = datetime.now() - timedelta(days=1)
@@ -30,12 +31,13 @@ dag = DAG(
     default_args=WORKFLOW_DEFAULT_ARGS,
     catchup=False,
 )
+GU = GlobalUtil.instance()
 spark = SparkSession \
     .builder \
-    .appName("sb-miniproject6") \
-    .config("spark.some.config.option", "some-value") \
+    .appName(GU.CONFIG['CORE']['PROJECT_NAME']) \
+    .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
     .getOrCreate()
-spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+#spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 covid = Covid(spark)
 
 t1 = PythonOperator(

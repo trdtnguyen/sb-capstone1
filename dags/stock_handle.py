@@ -1,8 +1,10 @@
 from airflow import DAG
 from airflow.operators.python_operator import PythonOperator
 from datetime import timedelta, datetime
-from tasks.Stock import Stock
+
 from pyspark.sql import SparkSession
+from tasks.Stock import Stock
+from tasks.GlobalUtil import GlobalUtil
 
 WORKFLOW_DAG_ID = 'stock_handle'
 WORKFLOW_START_DATE = datetime.now() - timedelta(days=1)
@@ -28,12 +30,13 @@ dag = DAG(
     catchup=False,
 )
 
+GU = GlobalUtil.instance()
 spark = SparkSession \
     .builder \
-    .appName("CovidCor") \
-    .config("spark.some.config.option", "some-value") \
+    .appName(GU.CONFIG['CORE']['PROJECT_NAME']) \
+    .config("spark.sql.execution.arrow.pyspark.enabled", "true") \
     .getOrCreate()
-spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+#spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 stock = Stock(spark)
 
 t1 = PythonOperator(
