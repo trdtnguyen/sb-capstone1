@@ -37,7 +37,7 @@ spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 stock = Stock(spark)
 
 t1 = PythonOperator(
-        task_id='extract_sp500',
+        task_id='extract_sp500_tickers',
         python_callable=stock.extract_sp500_tickers,
         dag=dag,
 )
