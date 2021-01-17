@@ -1,0 +1,8 @@
+# Python
+#####################
+*.pyc
+__pycache__
+# Logs and databases #
+######################
+*.log
+*.sqlite
