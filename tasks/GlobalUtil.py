@@ -17,7 +17,7 @@ class GlobalUtil(object):
 
     # Class attributes as global const
     LATEST_DATA_TABLE_NAME = 'latest_data'
-    START_DEFAULT_DATE = datetime(1990, 1, 1)
+    START_DEFAULT_DATE = datetime(1990, 1, 2)
 
     PROJECT_PATH = env.get('COVID_PROJECT_PATH')
 
@@ -70,6 +70,7 @@ class GlobalUtil(object):
 
                 latest_date = latest_date_arr[0][1]
                 if latest_date > cls.START_DEFAULT_DATE:
+                    print(f'DEBUG: in read_latest_data(): latest_date={latest_date}, START_DEFAULT_DATE={cls.START_DEFAULT_DATE}')
                     is_resume_extract = True
         return latest_df, is_resume_extract, latest_date
 
@@ -129,7 +130,7 @@ class GlobalUtil(object):
     df: the input dataframe
     by_cols: array of columns to be transposed to array. All columns type must have the same type
     alias_key: name of new column that represent for all columns in by_cols
-    alias_val: name of new column that show values of columns in by_cols 
+    alias_val: name of new column that show values of columns in by_cols
     """
 
     @classmethod
