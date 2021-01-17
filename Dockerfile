@@ -35,6 +35,9 @@ RUN pip install  sqlalchemy
 COPY setup.sh /root/airflow/setup.sh
 RUN chmod +x setup.sh
 
+COPY airflow_test.sh airflow_test.sh
+RUN chmod +x airflow_test.sh
+
 COPY config.cnf config.cnf
 COPY dags dags
 COPY sql sql
