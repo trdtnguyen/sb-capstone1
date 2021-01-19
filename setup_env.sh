@@ -1,4 +1,10 @@
 #./bin/bash
+FILE_PATH=$(realpath "$0")
+DIR_PATH=$(dirname $FILE_PATH)
+
+export COVID_PROJECT_PATH=$DIR_PATH
+export PYTHONPATH=$PYTHONPATH:$DIR_PATH
+
 #export $MYSQL_DATABASE
 #export MYSQL_DATABASE=ticket_event
 export AIRFLOW_DATABASE=airflowdb
