@@ -469,6 +469,7 @@ class Covid:
         print('Done.')
 
     """
+    Read local CSV file and write on corresponding table in database
     Dependencies:
         None. This function could work independently with others
     """
@@ -510,24 +511,17 @@ class Covid:
                   df['SurfaceArea'], df['IndepYear'], df['Population'],
                   df['LifeExpectancy'], df['GNP'], df['LocalName'], df['GovernmentForm'],
                   df['HeadOfState'], df['Capital'], df['Code2'])
-
-        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
-        if len(end_date_arr) > 0:
-            assert len(end_date_arr) == 1
-            end_date = end_date_arr[0][1]
-
+        end_date = datetime.today()
         latest_df = self.GU.update_latest_data(latest_df, DIM_TABLE_NAME, end_date)
 
 
         ####################################
-        # Step 4 Write to Database
+        # Step 3 Write to Database
         ####################################
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print(f'Write to table {DIM_TABLE_NAME}...')
         self.GU.write_to_db(df, DIM_TABLE_NAME, logger)
-
-
         print('Done.')
 
     """
