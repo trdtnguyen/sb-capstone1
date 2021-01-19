@@ -470,7 +470,7 @@ class Stock:
         #########
         ### Step 2 Update latest date
         #########
-        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        latest_df = self.GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
         #########
         ### Step 3 Transform
         #########
