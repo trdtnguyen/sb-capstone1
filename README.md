@@ -410,13 +410,23 @@ Command | Description
 ` pytest` | Test all unit tests 
 `$ pytest tests/test_covid_us.py` | Test all unit tests in Covid US ETL
 `$ pytest tests/test_covid_us.py::test_extract_us` | Test extract_us() that extract raw data for `covid19_raw_us` table
-`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_us` | Test transform from `covid19_raw_us` table to `covid19_fact_us` table
-`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_us` | Test aggregate from `covid19_fact_us` table to `covid19_monthly_fact_us` table
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_us` | Test transform process from `covid19_raw_us` table to `covid19_fact_us` table
+`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_us` | Test aggregate process from `covid19_fact_us` table to `covid19_monthly_fact_us` table
 `$ pytest tests/test_covid_global.py` | Test all unit tests in Covid Global ETL
 `$ pytest tests/test_covid_us.py::test_transform_raw_to_dim_country` | Test extract process for `country_dim` table that read data from local CSV file. This CSV file is exported from world.country table from MySQL Workbench.
 `$ pytest tests/test_covid_us.py::test_extract_global` | Test extract_global() that extract raw data for `covid19_raw_global`
-`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_global` | Test transform from `covid19_raw_global` table to `covid19_fact_global` table
-`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_global` | Test aggregate from `covid19_fact_global` table to `covid19_monthly_fact_global` table
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_global` | Test transform process from `covid19_raw_global` table to `covid19_fact_global` table
+`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_global` | Test aggregate process from `covid19_fact_global` table to `covid19_monthly_fact_global` table
+`$ pytest tests/test_stock.py` | Test all unit tests in Stock ETL
+`$ pytest tests/test_stock.py::test_extract_sp500_tickers` | Test extracting process that get S&P500 tickers by parsing a wiki page. The results are write on `stock_ticker_raw` table.
+`$ pytest tests/test_stock.py::test_extract_batch_stock` | Test extracting stock prices for each stickers read from the `stock_ticker_raw` table.
+`$ pytest tests/test_stock.py::test_transform_raw_to_fact_stock` | Test transform process from `stock_price_raw` table to `stock_price_fact` table.
+`$ pytest tests/test_stock.py::test_aggregate_fact_to_monthly_fact_stock` | Test aggregate process from `stock_price_fact` table to `stock_price_monthly_fact` table
+`$ pytest tests/test_bol.py` | Test all unit tests in BOL ETL
+`$ pytest tests/test_bol.py::test_dim_table_exist` | Test whether data from `bol_series_dim` table existed. This table is isnreted during the init phase during project setup process.
+`$ pytest tests/test_bol.py::test_extract_BOL` | Test extract featured series from BOL data sources by reading each feature from `bol_series_dim` and the API provided.
+`$ pytest tests/test_bol.py::test_transform_raw_to_fact_bol` | Test transform process from `bol_raw` table to `bol_series_fact` table. Note that BOL data set is updated on a montly basic, so we don't need to aggrate the fact table to montly fact as did in other datasets.
+
 
 
 
