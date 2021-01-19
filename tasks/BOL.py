@@ -38,10 +38,12 @@ def from_date_to_dateid(date: datetime):
 
 class BOL:
     def __init__(self, spark):
-        user = GU.CONFIG['DATABASE']['MYSQL_USER']
-        db_name = GU.CONFIG['DATABASE']['MYSQL_DATABASE']
-        pw = GU.CONFIG['DATABASE']['MYSQL_PASSWORD']
-        host = GU.CONFIG['DATABASE']['MYSQL_HOST']
+        self.GU = GlobalUtil.instance()
+
+        user = self.GU.CONFIG['DATABASE']['MYSQL_USER']
+        db_name = self.GU.CONFIG['DATABASE']['MYSQL_DATABASE']
+        pw = self.GU.CONFIG['DATABASE']['MYSQL_PASSWORD']
+        host = self.GU.CONFIG['DATABASE']['MYSQL_HOST']
 
         config = configparser.ConfigParser()
         # config.read('config.cnf')
@@ -62,18 +64,18 @@ class BOL:
         DIM_TABLE_NAME = 'bol_series_dim'
 
         is_resume_extract = False
-        latest_date = GU.START_DEFAULT_DATE
-        end_date = GU.START_DEFAULT_DATE
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
         start_date = datetime(2011, 1, 1)
 
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(self.spark, RAW_TABLE_NAME)
+            self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
 
         end_date = datetime.now()
-        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
+        raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             # we only compare two dates by month, year excluding time
@@ -94,7 +96,7 @@ class BOL:
         #########
         ### Step 2 Update latest date
         #########
-        latest_df = GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
+        latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
 
 
 
@@ -125,7 +127,7 @@ class BOL:
         ### Step 3 Read series from database
         #########
         print('Read series ...', end=  " ")
-        dim_df = GU.read_from_db(self.spark, DIM_TABLE_NAME)
+        dim_df = self.GU.read_from_db(self.spark, DIM_TABLE_NAME)
         # s = text("SELECT series_id "
         #          f"FROM {DIM_TABLE_NAME} "
         #          )
@@ -150,10 +152,10 @@ class BOL:
         ### Step 4 Extract data from BOL using API
         #########
         insert_list = []
-        series_ids = GU.rows_to_array(dim_df, 'series_id')
+        series_ids = self.GU.rows_to_array(dim_df, 'series_id')
 
         # API_url = 'https://api.bls.gov/publicAPI/v2/timeseries/data/'
-        API_url = GU.CONFIG['BOL']['BOL_API_URL']
+        API_url = self.GU.CONFIG['BOL']['BOL_API_URL']
         data = json.dumps({"seriesid": series_ids, "startyear": str(start_year), "endyear": str(end_year)})
 
         headers = {'Content-type': 'application/json'}
@@ -188,8 +190,8 @@ class BOL:
         except ValueError:
             logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
 
-        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
-        GU.write_latest_data(latest_df, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
     def transform_raw_to_fact_bol(self):
@@ -198,14 +200,14 @@ class BOL:
         RAW_TABLE_NAME = 'bol_raw'
         FACT_TABLE_NAME = 'bol_series_fact'
 
-        latest_date = GU.START_DEFAULT_DATE
-        end_date = GU.START_DEFAULT_DATE
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
 
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(self.spark, FACT_TABLE_NAME)
+            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
@@ -218,8 +220,8 @@ class BOL:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
 
-        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
-        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
         #########
         ### Step 3 Transform. Add dateid and date column into the raw table
         #########
@@ -238,50 +240,13 @@ class BOL:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {FACT_TABLE_NAME}...')
-        GU.write_to_db(df, FACT_TABLE_NAME, logger)
-        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
-        GU.write_latest_data(latest_df, logger)
-        print('Done.')
-
-        # # 1. Transform from raw to fact table
-        # print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
-        # s = text("SELECT series_id, year, period, value, footnotes "
-        #          f"FROM {RAW_TABLE_NAME} "
-        #          )
-        # try:
-        #     result = conn.execute(s)
-        #     keys = result.keys()
-        #     ret_list = result.fetchall()
-        #     # transform the datetime to dateid
-        #     insert_list = []
-        #     for row in ret_list:
-        #         insert_val = {}
-        #
-        #         year = row[1]
-        #         period = row[2]
-        #         date = BOL_period_to_date(year, period)
-        #         date_str = date.strftime('%Y-%m-%d')
-        #         date_str = date_str.replace('-', '')
-        #         dateid = int(date_str)
-        #         insert_val['dateid'] = dateid
-        #
-        #         insert_val['series_id'] = row[0]
-        #         insert_val['date'] = date
-        #         insert_val['value'] = row[3]
-        #         insert_val['footnotes'] = row[4]
-        #
-        #         insert_list.append(insert_val)
-        #
-        #     df = pd.DataFrame(insert_list)
-        #     if len(df) > 0:
-        #         df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        # except pymysql.OperationalError as e:
-        #     logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
-        #     print(e)
+        self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
 #extract_BOL(conn, logger, 2010, 2020)
-GU = GlobalUtil.instance()
+#self.GU = GlobalUtil.instance()
 # spark = SparkSession \
 #     .builder \
 #     .appName("sb-miniproject6") \
