@@ -48,61 +48,6 @@ Table                 | Rows     | Columns | AVG row length | Table size | Perio
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
-### Trouble Shootings:
-
-***JDBC connector***
-
-Problem:
-```
-java.lang.ClassNotFoundException: com.mysql.jdbc.Driver
-```
-
-Solution:
-
-Copy the connector .jar file (download from mysql website) to the jars directory of spark
-```
-cp /usr/share/java/mysql-connector-java-5.1.45.jar ~/spark-3.0.1-bin-hadoop2.7/jars/
-```
-
-***Problem: `overwrite` mode in spark doesn't work***
-In this project, we use `latest_data` table for tracking the last updated data. Before extracting data we read from the `lastest_data` table. After extracting a new data, we update the lastest date.
-
-```
-latest_df = spark.read.format('jdbc').options(
-            url=jdbc_mysql_url,
-            driver=driver_name,
-            dbtable=LATEST_DATA_TABLE_NAME,
-            user=config['DATABASE']['MYSQL_USER'],
-            password=config['DATABASE']['MYSQL_PASSWORD']).load()
-...
-
-latest_df.write.format('jdbc').options(
-                truncate=True,
-                url=jdbc_mysql_url,
-                driver=driver_name,
-                dbtable=LATEST_DATA_TABLE_NAME,
-                user=config['DATABASE']['MYSQL_USER'],
-                password=config['DATABASE']['MYSQL_PASSWORD'])\
-                .option("truncate", True)\
-                .mode('overwrite').save()
-```
-***Cause:*** Spark use a lazy approach that just read metadata from the table but not actual data. When we write with `overwrite` mode with `truncate=True`, Spark truncate the table before reading data from it, so we lost our data before the new update actually write on. 
-
-***Solution:*** Force Spark read data on main memory using `.cache()` and action operation such as `count()`
-```
-# Read data from database
-# <Read code>
-
-latest_df = latest_df.cache()
-latest_df.count()
-# Write data to database
-# <write code>
-```
-
-From mysql 8.0, mysql uses caching_sha2_password for authentication
-```
-mysql> ALTER USER 
-```
 
 ### Covid-19
 * This datase has two subsets: global and the US.
@@ -472,4 +417,60 @@ CREATE TABLE IF NOT EXISTS bol_series_fact(
     
     FOREIGN KEY(series_id) references BOL_series_dim(series_id)
 );
+```
+
+## Trouble Shootings:
+
+***JDBC connector***
+
+Problem:
+```
+java.lang.ClassNotFoundException: com.mysql.jdbc.Driver
+```
+
+Solution:
+
+Copy the connector .jar file (download from mysql website) to the jars directory of spark
+```
+cp /usr/share/java/mysql-connector-java-5.1.45.jar ~/spark-3.0.1-bin-hadoop2.7/jars/
+```
+
+***Problem: `overwrite` mode in spark doesn't work***
+In this project, we use `latest_data` table for tracking the last updated data. Before extracting data we read from the `lastest_data` table. After extracting a new data, we update the lastest date.
+
+```
+latest_df = spark.read.format('jdbc').options(
+            url=jdbc_mysql_url,
+            driver=driver_name,
+            dbtable=LATEST_DATA_TABLE_NAME,
+            user=config['DATABASE']['MYSQL_USER'],
+            password=config['DATABASE']['MYSQL_PASSWORD']).load()
+...
+
+latest_df.write.format('jdbc').options(
+                truncate=True,
+                url=jdbc_mysql_url,
+                driver=driver_name,
+                dbtable=LATEST_DATA_TABLE_NAME,
+                user=config['DATABASE']['MYSQL_USER'],
+                password=config['DATABASE']['MYSQL_PASSWORD'])\
+                .option("truncate", True)\
+                .mode('overwrite').save()
+```
+***Cause:*** Spark use a lazy approach that just read metadata from the table but not actual data. When we write with `overwrite` mode with `truncate=True`, Spark truncate the table before reading data from it, so we lost our data before the new update actually write on. 
+
+***Solution:*** Force Spark read data on main memory using `.cache()` and action operation such as `count()`
+```
+# Read data from database
+# <Read code>
+
+latest_df = latest_df.cache()
+latest_df.count()
+# Write data to database
+# <write code>
+```
+
+From mysql 8.0, mysql uses caching_sha2_password for authentication
+```
+mysql> ALTER USER 
 ```
