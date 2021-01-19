@@ -354,6 +354,76 @@ class Stock:
         self.GU.write_latest_data(latest_df, logger)
         print('Extract all data Done.')
 
+    """
+        Dependencies:
+            extract_sp500_tickers ->
+            extract_batch_stock() ->
+            transform_raw_to_fact_stock()
+
+            Read raw data.
+            Add a dateid column
+            Write back data
+        """
+
+    def transform_raw_to_fact_stock(self):
+        conn = self.conn
+        logger = self.logger
+        RAW_TABLE_NAME = 'stock_price_raw'
+        FACT_TABLE_NAME = 'stock_price_fact'
+
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
+
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
+        # 1. Transform from raw to fact table
+        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
+
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = raw_df.count()
+                raw_df = raw_df.filter(
+                    raw_df['date'] > latest_date
+                )
+                after = raw_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 3 Transform
+        #########
+        # Add dateid column
+        dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
+        df = raw_df.withColumn('dateid', dateid_udf(raw_df['date']))
+        # Reorder columns
+        df = df.select(df['dateid'], df['stock_ticker'], df['date'],
+                       df['High'], df['Low'], df['Open'], df['Close'],
+                       df['Volume'], df['adj_close'])
+
+        print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {FACT_TABLE_NAME}...')
+        self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+        print('Done.')
 
     """
     Dependencies:
@@ -362,7 +432,6 @@ class Stock:
         transform_raw_to_fact_stock() ->
         aggregate_fact_to_monthly_fact_stock
     """
-
 
     def aggregate_fact_to_monthly_fact_stock(self):
         conn = self.conn
@@ -475,111 +544,7 @@ class Stock:
         # print('Done.')
 
 
-    """
-    Dependencies:
-        extract_sp500_tickers ->
-        extract_batch_stock() ->
-        transform_raw_to_fact_stock()
 
-        Read raw data.
-        Add a dateid column
-        Write back data
-    """
-    def transform_raw_to_fact_stock(self):
-        conn = self.conn
-        logger = self.logger
-        RAW_TABLE_NAME = 'stock_price_raw'
-        FACT_TABLE_NAME = 'stock_price_fact'
-
-        latest_date = self.GU.START_DEFAULT_DATE
-        end_date = self.GU.START_DEFAULT_DATE
-
-        #######################################
-        # Step 1 Read from database to determine the last written data point
-        #######################################
-        latest_df, is_resume_extract, latest_date = \
-            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
-        # 1. Transform from raw to fact table
-        end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
-        if len(end_date_arr) > 0:
-            assert len(end_date_arr) == 1
-            end_date = end_date_arr[0][1]
-
-        raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
-
-        if is_resume_extract:
-            if latest_date >= end_date:
-                print(f'The system has updated data up to {end_date}. No further extract needed.')
-                return
-            else:
-                ### Resuming transform
-                before = raw_df.count()
-                raw_df = raw_df.filter(
-                    raw_df['date'] > latest_date
-                )
-                after = raw_df.count()
-                print(f'Skipped {(before - after)} rows')
-
-        #########
-        ### Step 2 Update latest date
-        #########
-        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
-        #########
-        ### Step 3 Transform
-        #########
-        # Add dateid column
-        dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
-        df = raw_df.withColumn('dateid', dateid_udf(raw_df['date']))
-        # Reorder columns
-        df = df.select(df['dateid'], df['stock_ticker'], df['date'],
-                       df['High'], df['Low'], df['Open'], df['Close'],
-                       df['Volume'], df['adj_close'])
-
-        print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
-        ####################################
-        # Step 4 Write to Database
-        ####################################
-        print(f'Write to table {FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
-        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
-        self.GU.write_latest_data(latest_df, logger)
-        print('Done.')
-
-        # s = text("SELECT stock_ticker, date, High, Low, Open, Close, Volume, adj_close "
-        #          f"FROM {RAW_TABLE_NAME} "
-        #          )
-        # try:
-        #     result = conn.execute(s)
-        #     keys = result.keys()
-        #     ret_list = result.fetchall()
-        #     # transform the datetime to dateid
-        #     insert_list = []
-        #     for row in ret_list:
-        #         insert_val = {}
-        #
-        #         date = row[1]
-        #         date_str = date.strftime('%Y-%m-%d')
-        #         date_str = date_str.replace('-', '')
-        #         dateid = int(date_str)
-        #         insert_val['dateid'] = dateid
-        #         insert_val['stock_ticker'] = row[0]
-        #         insert_val['date'] = row[1]
-        #         insert_val['High'] = row[2]
-        #         insert_val['Low'] = row[3]
-        #         insert_val['Open'] = row[4]
-        #         insert_val['Close'] = row[5]
-        #         insert_val['Volume'] = row[6]
-        #         insert_val['adj_close'] = row[7]
-        #
-        #         insert_list.append(insert_val)
-        #
-        #     df = pd.DataFrame(insert_list)
-        #     if len(df) > 0:
-        #         df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        # except pymysql.OperationalError as e:
-        #     logger.error(f'Error Query when transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}')
-        #     print(e)
-        # print('Done.')
 
 #self.GU = GlobalUtil.instance()
 # spark = SparkSession \
