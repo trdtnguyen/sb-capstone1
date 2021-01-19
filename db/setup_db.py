@@ -8,7 +8,7 @@ try:
                                          host=env.get('MYSQL_HOST'),
                                          port=env.get('MYSQL_PORT'),
                                          database=env.get('MYSQL_DATABASE'))
-    print('create tables...')
+    print('create tables...', end=" ")
     cursor = connection.cursor()
 
     sql_cmd =""
@@ -22,7 +22,8 @@ try:
                 cursor.execute(sql_cmd)
                 sql_cmd = ""
 
-    print('inserta data onto tables...')
+    print('Done.')
+    print('insert data onto tables...', end=' ')
     sql_cmd =""
     with open('sql/insert_table.sql') as f:
         lines = f.readlines()
@@ -33,5 +34,6 @@ try:
                     print(f'execute sql_cmd: {sql_cmd}')
                 cursor.execute(sql_cmd)
                 sql_cmd = ""
+    print('Done.')
 except Exception as error:
     print("Error while connecting to database for job tracker", error)
