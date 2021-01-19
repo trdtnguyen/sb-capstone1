@@ -1,5 +1,5 @@
 """
-Extract Covid-19 data from Johns Hopkins' data source
+Extract Stock data from Yahoo! Finance
 """
 __version__ = '0.1'
 __author__ = 'Dat Nguyen'
@@ -15,14 +15,9 @@ from db.DB import DB
 import pandas as pd
 import configparser
 from pandas_datareader import data
-from pandas_datareader._utils import RemoteDataError
 from sqlalchemy.sql import text
-
 from datetime import timedelta, datetime
-import pymysql
-from os import environ as env
 
-import pickle
 import requests
 import bs4 as bs
 
@@ -59,11 +54,12 @@ class Stock:
         # db_name = env.get('MYSQL_DATABASE')
         # pw = env.get('MYSQL_PASSWORD')
         # host = env.get('MYSQL_HOST')
+        self.GU = GlobalUtil.instance()
 
-        user = GU.CONFIG['DATABASE']['MYSQL_USER']
-        db_name = GU.CONFIG['DATABASE']['MYSQL_DATABASE']
-        pw = GU.CONFIG['DATABASE']['MYSQL_PASSWORD']
-        host = GU.CONFIG['DATABASE']['MYSQL_HOST']
+        user = self.GU.CONFIG['DATABASE']['MYSQL_USER']
+        db_name = self.GU.CONFIG['DATABASE']['MYSQL_DATABASE']
+        pw = self.GU.CONFIG['DATABASE']['MYSQL_PASSWORD']
+        host = self.GU.CONFIG['DATABASE']['MYSQL_HOST']
 
         config = configparser.ConfigParser()
         # config.read('config.cnf')
@@ -73,6 +69,7 @@ class Stock:
         self.db = DB(str_conn)
         self.conn = self.db.get_conn()
         self.logger = self.db.get_logger()
+
 
         # spark
         self.spark = spark
@@ -91,15 +88,15 @@ class Stock:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(self.spark, TICKER_TABLE_NAME)
+            self.GU.read_latest_data(self.spark, TICKER_TABLE_NAME)
         if is_resume_extract:
             print(f'Table {TICKER_TABLE_NAME} has already existed. Do nothing now')
             return
         end_date = datetime.now()
-        latest_df = GU.update_latest_data(latest_df, TICKER_TABLE_NAME, end_date)
+        latest_df = self.GU.update_latest_data(latest_df, TICKER_TABLE_NAME, end_date)
         # config = configparser.ConfigParser()
         # config.read('/root/airflow/config.cnf')
-        url = GU.CONFIG['STOCK']['STOCK_SP500_URL']
+        url = self.GU.CONFIG['STOCK']['STOCK_SP500_URL']
 
         #resp = requests.get('http://en.wikipedia.org/wiki/List_of_S%26P_500_companies')
         resp = requests.get(url)
@@ -141,8 +138,8 @@ class Stock:
             # manually insert a dictionary will not work due to the limitation number of records insert
             # results = conn.execute(table.insert(), insert_list)
 
-            print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
-            GU.write_latest_data(latest_df, logger)
+            print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+            self.GU.write_latest_data(latest_df, logger)
         except ValueError:
             logger.error(f'Error Query when extracting data for {TICKER_TABLE_NAME} table')
         return tickers
@@ -228,18 +225,18 @@ class Stock:
         TICKER_TABLE_NAME = 'stock_ticker_raw'
 
         is_resume_extract = False
-        latest_date = GU.START_DEFAULT_DATE
-        end_date = GU.START_DEFAULT_DATE
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
         start_date = datetime(2020, 1, 1)
 
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date =\
-            GU.read_latest_data(self.spark, RAW_TABLE_NAME)
+            self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
 
         end_date = datetime.now()
-        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
+        raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             # we only compare two dates by day, month, year excluding time
@@ -254,7 +251,7 @@ class Stock:
         #########
         ### Step 2 Update latest date
         #########
-        latest_df = GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
+        latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
 
         # 1. Resuming extract data. We don't need to extract data that we had in the database
         #Get the latest date from database
@@ -268,12 +265,12 @@ class Stock:
         if len(ticker_end_date_arr) > 0:
             assert len(ticker_end_date_arr) == 1
             ticker_end_date = ticker_end_date_arr[0][1]
-            if ticker_end_date == GU.START_DEFAULT_DATE:
+            if ticker_end_date == self.GU.START_DEFAULT_DATE:
                 self.extract_sp500_tickers()
 
-        ticker_df = GU.read_from_db(self.spark, TICKER_TABLE_NAME)
+        ticker_df = self.GU.read_from_db(self.spark, TICKER_TABLE_NAME)
         # Flatten the query result to get list of tickers
-        tickers = GU.rows_to_array(ticker_df, 'ticker')
+        tickers = self.GU.rows_to_array(ticker_df, 'ticker')
 
         #tickers = ['AAPL', 'MSFT', '^GSPC']
         # start = dt.datetime(2020, 1, 1)
@@ -345,7 +342,7 @@ class Stock:
         # print(stock_df.shape)
         # df = spark.createDataFrame(stock_df)
         # print(f'Write to table {RAW_TABLE_NAME}...')
-        # GU.write_to_db(df, RAW_TABLE_NAME, logger)
+        # self.GU.write_to_db(df, RAW_TABLE_NAME, logger)
         # write the ticker list that has no info
         if len(noinfo_tickers) > 0:
             print(f"there are {len(noinfo_tickers)} tickers don't have info")
@@ -353,8 +350,8 @@ class Stock:
                 f_error.writelines("%s\n" % ticker for ticker in noinfo_tickers)
 
 
-        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
-        GU.write_latest_data(latest_df, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
         print('Extract all data Done.')
 
 
@@ -373,20 +370,20 @@ class Stock:
         FACT_TABLE_NAME = 'stock_price_fact'
         MONTHLY_FACT_TABLE_NAME = 'stock_price_monthly_fact'
 
-        latest_date = GU.START_DEFAULT_DATE
-        end_date = GU.START_DEFAULT_DATE
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
+            self.GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
         end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        fact_df = GU.read_from_db(self.spark, FACT_TABLE_NAME)
+        fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -404,7 +401,7 @@ class Stock:
         #########
         ### Step 2 Update latest date
         #########
-        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
         #########
         ### Step 3 Transform
         #########
@@ -434,9 +431,9 @@ class Stock:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
-        GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
-        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
-        GU.write_latest_data(latest_df, logger)
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
         print('Done.')
         # try:
         #     result = conn.execute(s)
@@ -494,21 +491,21 @@ class Stock:
         RAW_TABLE_NAME = 'stock_price_raw'
         FACT_TABLE_NAME = 'stock_price_fact'
 
-        latest_date = GU.START_DEFAULT_DATE
-        end_date = GU.START_DEFAULT_DATE
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
 
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            GU.read_latest_data(self.spark, FACT_TABLE_NAME)
+            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
         # 1. Transform from raw to fact table
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
-        raw_df = GU.read_from_db(self.spark, RAW_TABLE_NAME)
+        raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -526,7 +523,7 @@ class Stock:
         #########
         ### Step 2 Update latest date
         #########
-        latest_df = GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
         #########
         ### Step 3 Transform
         #########
@@ -543,9 +540,9 @@ class Stock:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {FACT_TABLE_NAME}...')
-        GU.write_to_db(df, FACT_TABLE_NAME, logger)
-        print(f'Write to table {GU.LATEST_DATA_TABLE_NAME}...')
-        GU.write_latest_data(latest_df, logger)
+        self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
         # s = text("SELECT stock_ticker, date, High, Low, Open, Close, Volume, adj_close "
@@ -584,7 +581,7 @@ class Stock:
         #     print(e)
         # print('Done.')
 
-GU = GlobalUtil.instance()
+#self.GU = GlobalUtil.instance()
 # spark = SparkSession \
 #     .builder \
 #     .appName("sb-miniproject6") \
@@ -599,7 +596,3 @@ GU = GlobalUtil.instance()
 # stock.extract_batch_stock()
 # stock.transform_raw_to_fact_stock()
 # stock.aggregate_fact_to_monthly_fact_stock()
-
-# start_date = datetime(2020, 1, 1)
-# end_date = datetime(2020, 10, 23)
-# extract_batch_stock(conn, logger, True,DEFAULT_TICKER_FILE, start_date, end_date)

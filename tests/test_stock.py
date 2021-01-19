@@ -1,12 +1,16 @@
 """
-Test unit for ETL covid19 data source - global
+Test unit for ETL Stock
 """
 __version__ = '0.1'
 __author__ = 'Dat Nguyen'
 
-from tasks.Covid import Covid
+from tasks.Stock import Stock
 from pyspark.sql import SparkSession
 from tasks.GlobalUtil import GlobalUtil
+
+#sys.path.append("/home/dtn/sb-capstone1/tasks")
+#sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+# print (sys.path)
 
 GU = GlobalUtil.instance()
 
@@ -16,29 +20,27 @@ spark = SparkSession \
     .config("spark.some.config.option", "some-value") \
     .getOrCreate()
 
-covid = Covid(spark)
+stock = Stock(spark)
 
-RAW_TABLE_NAME = 'covid19_global_raw'
-DIM_TABLE_NAME = 'country_dim'
-FACT_TABLE_NAME = 'covid19_global_fact'
-COUNTRY_TABLE_NAME = 'world_country'
-MONTHLY_FACT_TABLE_NAME = 'covid19_global_monthly_fact'
+RAW_TABLE_NAME = 'stock_price_raw'
+TICKER_TABLE_NAME = 'stock_ticker_raw'
+FACT_TABLE_NAME = 'stock_price_fact'
+MONTHLY_FACT_TABLE_NAME = 'stock_price_monthly_fact'
 
+def test_extract_sp500_tickers():
+    stock.extract_sp500_tickers()
 
-def test_transform_raw_to_dim_country():
-    covid.transform_raw_to_dim_country()
-    latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, DIM_TABLE_NAME)
+    latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, TICKER_TABLE_NAME)
     assert (is_resume_extract is not None)
     assert is_resume_extract
     assert (latest_date > GU.START_DEFAULT_DATE)
 
     # Read after write
-    dim_df = GU.read_from_db(spark, DIM_TABLE_NAME)
-    assert dim_df.count() > 0
+    raw_df = GU.read_from_db(spark, TICKER_TABLE_NAME)
+    assert raw_df.count() > 0
 
-
-def test_extract_global():
-    covid.extract_global()
+def test_extract_batch_stock():
+    stock.extract_batch_stock()
 
     latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, RAW_TABLE_NAME)
     assert (is_resume_extract is not None)
@@ -46,12 +48,12 @@ def test_extract_global():
     assert (latest_date > GU.START_DEFAULT_DATE)
 
     # Read after write
-    raw_df = GU.read_from_db(spark, RAW_TABLE_NAME)
-    assert raw_df.count() > 0
+    df = GU.read_from_db(spark, RAW_TABLE_NAME)
+    assert df.count() > 0
 
 
-def test_transform_raw_to_fact_global():
-    covid.transform_raw_to_fact_global()
+def test_transform_raw_to_fact_stock():
+    stock.transform_raw_to_fact_stock()
 
     latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, FACT_TABLE_NAME)
     assert (is_resume_extract is not None)
@@ -62,9 +64,10 @@ def test_transform_raw_to_fact_global():
     df = GU.read_from_db(spark, FACT_TABLE_NAME)
     assert df.count() > 0
 
+def test_aggregate_fact_to_monthly_fact_stock():
+    stock.aggregate_fact_to_monthly_fact_stock()
 
-def test_aggregate_fact_to_monthly_fact_global():
-    covid.aggregate_fact_to_monthly_fact_global()
+    stock.transform_raw_to_fact_stock()
 
     latest_df, is_resume_extract, latest_date = GU.read_latest_data(spark, MONTHLY_FACT_TABLE_NAME)
     assert (is_resume_extract is not None)

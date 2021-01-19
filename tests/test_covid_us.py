@@ -1,19 +1,22 @@
-import tasks
+"""
+Test unit for ETL covid19 data source - us
+"""
+__version__ = '0.1'
+__author__ = 'Dat Nguyen'
+
 from tasks.Covid import Covid
 from pyspark.sql import SparkSession
 from tasks.GlobalUtil import GlobalUtil
-import sys
-import os
 
 #sys.path.append("/home/dtn/sb-capstone1/tasks")
 #sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 # print (sys.path)
 
 GU = GlobalUtil.instance()
-print('Test config value: ', GU.CONFIG['CORE']['PROJECT_NAME'])
+
 spark = SparkSession \
     .builder \
-    .appName("TestApp") \
+    .appName(GU.CONFIG['CORE']['PROJECT_NAME']) \
     .config("spark.some.config.option", "some-value") \
     .getOrCreate()
 
