@@ -4,6 +4,11 @@ Extract Covid-19 data from Johns Hopkins' data source
 __version__ = '0.1'
 __author__ = 'Dat Nguyen'
 
+import os
+from os import environ as env
+import sys
+#sys.path.append(os.path.join(os.path.dirname(__file__), ".", ".."))
+
 from tasks.GlobalUtil import GlobalUtil
 # import pandas as pd
 from pyspark.sql import SparkSession
@@ -14,8 +19,8 @@ from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
 from db.DB import DB
 import configparser
 from datetime import timedelta, datetime
-import os
-from os import environ as env
+
+print (sys.path)
 
 
 """
@@ -368,7 +373,9 @@ class Covid:
         # Add column 'dateid' and 'date'
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
         dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
-        month_name_udf = udf(lambda d: get_month_name(d), StringType())
+
+        #month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        month_name_udf = udf(lambda d: d.strftime('%B'), StringType())
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('dateid', dateid_udf(df['date'])) \
             .withColumn('month_name', month_name_udf(df['date']))
@@ -710,7 +717,7 @@ class Covid:
 # covid = Covid(spark)
 # covid.extract_us()
 # covid.transform_raw_to_fact_us()
-# covid.aggregate_fact_to_monthly_fact_us()
+#covid.aggregate_fact_to_monthly_fact_us()
 
 #covid.transform_raw_to_dim_country()
 #covid.extract_global()

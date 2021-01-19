@@ -20,6 +20,9 @@ class GlobalUtil(object):
     START_DEFAULT_DATE = datetime(1990, 1, 2)
 
     PROJECT_PATH = env.get('COVID_PROJECT_PATH')
+    if PROJECT_PATH is None:
+        print("===> COVID_PROJECT_PATH is not set. Get project path from os.path")
+        PROJECT_PATH = os.path.join(os.path.dirname(__file__),"..")
 
     # CONFIG = configparser.ConfigParser()
     CONFIG = configparser.RawConfigParser()  # Use RawConfigParser() to read url with % character
