@@ -337,46 +337,30 @@ This stage transform data from the raw tables to our fact and demensional tables
 ### Covid-19
 * `country_dim` table: 
   * Dimentional table keeps general informaiton of countries in the world.
-  * Aggregate data from States/Province of a country (if any)
-  * We buit this table by joining `covid19_global_raw` and `world.country` (provided in MySQL workbench)
+  * We built this table by extracting `world.country` provided in MySQL workbench.
   
-```sql
-CREATE TABLE IF NOT EXISTS country_dim(
-    code VARCHAR(3), -- country's code in 3 leters e.g., CAN
-    Name VARCHAR(32), -- country's name e.g., Canada
-    Lat double NOT NULL,
-    Long_ double NOT NULL,
-    Continent VARCHAR(32), -- e.g., North America
-    Region VARCHAR(32), -- e.g., North America
-    SurfaceArea double,
-    IndepYear int,
-    Population int,
-    LifeExpectancy double,
-    GNP int,
-    LocalName VARCHAR(32),
-    GovernmentForm VARCHAR(32),
-    HeadOfState VARCHAR(32),
-    Captital int,
-    Code2 VARCHAR(3),
-    PRIMARY KEY(code)
-);
-```
 * `covid19_global_fact` table:
-  * Fact table keep series data of covid19 confirmed cases and deaths.
+  * Fact table keep series data of covid19 confirmed cases and deaths fro each country by day.
   * Transformed from raw table `convid19_global_raw`
   * `dateid` is an interger in format of `yyyymmdd` computed from `date`
-```sql
-CREATE TABLE IF NOT EXISTS covid19_global_fact(
-    dateid bigint NOT NULL,
-    country_code VARCHAR(3) NOT NULL,
-    date datetime NOT NULL,
-    confirmed int NOT NULL,
-    deaths int NOT NULL,
-    
-    PRIMARY KEY(dateid, country_code),
-    FOREIGN KEY (country_code) REFERENCES country_dim(code)
-);
-```
+
+* `covid19_global_monthly_fact` table:
+  * Fact table aggregated from `covid19_global_fact` monthly.
+  * Used to join with orther montly fact tables in query.
+  
+* `covid19_us_dim` table: 
+  * Dimentional table keeps general informaiton of the US states and counties.
+  * Build this table during extracting process from raw data.
+  
+* `covid19_us_fact` table: 
+  * Fact table keep covid19 confirmed cases and deaths for each the US' county by day.
+  * Transformed from `covid19_us_raw`
+  * `dateid` is an interger in format of `yyyymmdd` computed from `date`
+  
+* `covid19_us_monthly_fact` table:
+  * Fact table aggregated from `covid19_us_fact` monthly.
+  * Used to join with orther montly fact tables in query.
+
 
 ### Stock Prices
 * `stock_price_fact` table: 
