@@ -35,9 +35,6 @@ def test_extract_us():
     assert (latest_date > GU.START_DEFAULT_DATE)
 
 
-#test_extract_us()
-
-
 def test_transform_raw_to_fact_us():
     covid.transform_raw_to_fact_us()
 
