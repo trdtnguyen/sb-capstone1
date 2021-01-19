@@ -402,6 +402,25 @@ CREATE TABLE IF NOT EXISTS bol_series_fact(
     FOREIGN KEY(series_id) references BOL_series_dim(series_id)
 );
 ```
+## 6. Testing
+This project use `pytest` for testing.
+
+Command | Description
+---------|------------
+` pytest` | Test all unit tests 
+`$ pytest tests/test_covid_us.py` | Test all unit tests in Covid US ETL
+`$ pytest tests/test_covid_us.py::test_extract_us` | Test extract_us() that extract raw data for `covid19_raw_us` table
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_us` | Test transform from `covid19_raw_us` table to `covid19_fact_us` table
+`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_us` | Test aggregate from `covid19_fact_us` table to `covid19_monthly_fact_us` table
+`$ pytest tests/test_covid_global.py` | Test all unit tests in Covid Global ETL
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_dim_country` | Test extract process for `country_dim` table that read data from local CSV file. This CSV file is exported from world.country table from MySQL Workbench.
+`$ pytest tests/test_covid_us.py::test_extract_global` | Test extract_global() that extract raw data for `covid19_raw_global`
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_global` | Test transform from `covid19_raw_global` table to `covid19_fact_global` table
+`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_global` | Test aggregate from `covid19_fact_global` table to `covid19_monthly_fact_global` table
+
+
+
+
 
 ## Trouble Shootings:
 
