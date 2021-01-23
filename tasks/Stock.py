@@ -547,12 +547,12 @@ class Stock:
 
 
 #self.GU = GlobalUtil.instance()
-# spark = SparkSession \
-#     .builder \
-#     .appName("sb-miniproject6") \
-#     .config("spark.some.config.option", "some-value") \
-#     .getOrCreate()
-# # Enable Arrow-based columnar data transfers
+# # spark = SparkSession \
+# #     .builder \
+# #     .appName("sb-miniproject6") \
+# #     .config("spark.some.config.option", "some-value") \
+# #     .getOrCreate()
+# # # Enable Arrow-based columnar data transfers
 # spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 #
 # stock = Stock(spark)
@@ -561,3 +561,11 @@ class Stock:
 # stock.extract_batch_stock()
 # stock.transform_raw_to_fact_stock()
 # stock.aggregate_fact_to_monthly_fact_stock()
+
+# start_date = datetime(2020,1,1)
+# end_date = datetime(2021,1,1)
+# start_date_str = '2020-01-01'
+# end_date_str = '2021-01-01'
+# # df = data.DataReader(['sp500'], 'yahoo', start_date, end_date)
+# df = data.DataReader(['A', 'FB', 'AAA'], 'yahoo', start_date_str, end_date_str)
+# print(df)
