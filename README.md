@@ -48,61 +48,6 @@ Table                 | Rows     | Columns | AVG row length | Table size | Perio
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
-### Trouble Shootings:
-
-***JDBC connector***
-
-Problem:
-```
-java.lang.ClassNotFoundException: com.mysql.jdbc.Driver
-```
-
-Solution:
-
-Copy the connector .jar file (download from mysql website) to the jars directory of spark
-```
-cp /usr/share/java/mysql-connector-java-5.1.45.jar ~/spark-3.0.1-bin-hadoop2.7/jars/
-```
-
-***Problem: `overwrite` mode in spark doesn't work***
-In this project, we use `latest_data` table for tracking the last updated data. Before extracting data we read from the `lastest_data` table. After extracting a new data, we update the lastest date.
-
-```
-latest_df = spark.read.format('jdbc').options(
-            url=jdbc_mysql_url,
-            driver=driver_name,
-            dbtable=LATEST_DATA_TABLE_NAME,
-            user=config['DATABASE']['MYSQL_USER'],
-            password=config['DATABASE']['MYSQL_PASSWORD']).load()
-...
-
-latest_df.write.format('jdbc').options(
-                truncate=True,
-                url=jdbc_mysql_url,
-                driver=driver_name,
-                dbtable=LATEST_DATA_TABLE_NAME,
-                user=config['DATABASE']['MYSQL_USER'],
-                password=config['DATABASE']['MYSQL_PASSWORD'])\
-                .option("truncate", True)\
-                .mode('overwrite').save()
-```
-***Cause:*** Spark use a lazy approach that just read metadata from the table but not actual data. When we write with `overwrite` mode with `truncate=True`, Spark truncate the table before reading data from it, so we lost our data before the new update actually write on. 
-
-***Solution:*** Force Spark read data on main memory using `.cache()` and action operation such as `count()`
-```
-# Read data from database
-# <Read code>
-
-latest_df = latest_df.cache()
-latest_df.count()
-# Write data to database
-# <write code>
-```
-
-From mysql 8.0, mysql uses caching_sha2_password for authentication
-```
-mysql> ALTER USER 
-```
 
 ### Covid-19
 * This datase has two subsets: global and the US.
@@ -392,46 +337,30 @@ This stage transform data from the raw tables to our fact and demensional tables
 ### Covid-19
 * `country_dim` table: 
   * Dimentional table keeps general informaiton of countries in the world.
-  * Aggregate data from States/Province of a country (if any)
-  * We buit this table by joining `covid19_global_raw` and `world.country` (provided in MySQL workbench)
+  * We built this table by extracting `world.country` provided in MySQL workbench.
   
-```sql
-CREATE TABLE IF NOT EXISTS country_dim(
-    code VARCHAR(3), -- country's code in 3 leters e.g., CAN
-    Name VARCHAR(32), -- country's name e.g., Canada
-    Lat double NOT NULL,
-    Long_ double NOT NULL,
-    Continent VARCHAR(32), -- e.g., North America
-    Region VARCHAR(32), -- e.g., North America
-    SurfaceArea double,
-    IndepYear int,
-    Population int,
-    LifeExpectancy double,
-    GNP int,
-    LocalName VARCHAR(32),
-    GovernmentForm VARCHAR(32),
-    HeadOfState VARCHAR(32),
-    Captital int,
-    Code2 VARCHAR(3),
-    PRIMARY KEY(code)
-);
-```
 * `covid19_global_fact` table:
-  * Fact table keep series data of covid19 confirmed cases and deaths.
+  * Fact table keep series data of covid19 confirmed cases and deaths fro each country by day.
   * Transformed from raw table `convid19_global_raw`
   * `dateid` is an interger in format of `yyyymmdd` computed from `date`
-```sql
-CREATE TABLE IF NOT EXISTS covid19_global_fact(
-    dateid bigint NOT NULL,
-    country_code VARCHAR(3) NOT NULL,
-    date datetime NOT NULL,
-    confirmed int NOT NULL,
-    deaths int NOT NULL,
-    
-    PRIMARY KEY(dateid, country_code),
-    FOREIGN KEY (country_code) REFERENCES country_dim(code)
-);
-```
+
+* `covid19_global_monthly_fact` table:
+  * Fact table aggregated from `covid19_global_fact` monthly.
+  * Used to join with orther montly fact tables in query.
+  
+* `covid19_us_dim` table: 
+  * Dimentional table keeps general informaiton of the US states and counties.
+  * Build this table during extracting process from raw data.
+  
+* `covid19_us_fact` table: 
+  * Fact table keep covid19 confirmed cases and deaths for each the US' county by day.
+  * Transformed from `covid19_us_raw`
+  * `dateid` is an interger in format of `yyyymmdd` computed from `date`
+  
+* `covid19_us_monthly_fact` table:
+  * Fact table aggregated from `covid19_us_fact` monthly.
+  * Used to join with orther montly fact tables in query.
+
 
 ### Stock Prices
 * `stock_price_fact` table: 
@@ -472,4 +401,89 @@ CREATE TABLE IF NOT EXISTS bol_series_fact(
     
     FOREIGN KEY(series_id) references BOL_series_dim(series_id)
 );
+```
+## 6. Testing
+This project use `pytest` for testing.
+
+Command | Description
+---------|------------
+` pytest` | Test all unit tests 
+`$ pytest tests/test_covid_us.py` | Test all unit tests in Covid US ETL
+`$ pytest tests/test_covid_us.py::test_extract_us` | Test extract_us() that extract raw data for `covid19_raw_us` table
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_us` | Test transform process from `covid19_raw_us` table to `covid19_fact_us` table
+`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_us` | Test aggregate process from `covid19_fact_us` table to `covid19_monthly_fact_us` table
+`$ pytest tests/test_covid_global.py` | Test all unit tests in Covid Global ETL
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_dim_country` | Test extract process for `country_dim` table that read data from local CSV file. This CSV file is exported from world.country table from MySQL Workbench.
+`$ pytest tests/test_covid_us.py::test_extract_global` | Test extract_global() that extract raw data for `covid19_raw_global`
+`$ pytest tests/test_covid_us.py::test_transform_raw_to_fact_global` | Test transform process from `covid19_raw_global` table to `covid19_fact_global` table
+`$ pytest tests/test_covid_us.py::test_aggregate_fact_to_monthly_fact_global` | Test aggregate process from `covid19_fact_global` table to `covid19_monthly_fact_global` table
+`$ pytest tests/test_stock.py` | Test all unit tests in Stock ETL
+`$ pytest tests/test_stock.py::test_extract_sp500_tickers` | Test extracting process that get S&P500 tickers by parsing a wiki page. The results are write on `stock_ticker_raw` table.
+`$ pytest tests/test_stock.py::test_extract_batch_stock` | Test extracting stock prices for each stickers read from the `stock_ticker_raw` table.
+`$ pytest tests/test_stock.py::test_transform_raw_to_fact_stock` | Test transform process from `stock_price_raw` table to `stock_price_fact` table.
+`$ pytest tests/test_stock.py::test_aggregate_fact_to_monthly_fact_stock` | Test aggregate process from `stock_price_fact` table to `stock_price_monthly_fact` table
+`$ pytest tests/test_bol.py` | Test all unit tests in BOL ETL
+`$ pytest tests/test_bol.py::test_dim_table_exist` | Test whether data from `bol_series_dim` table existed. This table is isnreted during the init phase during project setup process.
+`$ pytest tests/test_bol.py::test_extract_BOL` | Test extract featured series from BOL data sources by reading each feature from `bol_series_dim` and the API provided.
+`$ pytest tests/test_bol.py::test_transform_raw_to_fact_bol` | Test transform process from `bol_raw` table to `bol_series_fact` table. Note that BOL data set is updated on a montly basic, so we don't need to aggrate the fact table to montly fact as did in other datasets.
+
+
+
+
+
+
+## Trouble Shootings:
+
+***JDBC connector***
+
+Problem:
+```
+java.lang.ClassNotFoundException: com.mysql.jdbc.Driver
+```
+
+Solution:
+
+Copy the connector .jar file (download from mysql website) to the jars directory of spark
+```
+cp /usr/share/java/mysql-connector-java-5.1.45.jar ~/spark-3.0.1-bin-hadoop2.7/jars/
+```
+
+***Problem: `overwrite` mode in spark doesn't work***
+In this project, we use `latest_data` table for tracking the last updated data. Before extracting data we read from the `lastest_data` table. After extracting a new data, we update the lastest date.
+
+```
+latest_df = spark.read.format('jdbc').options(
+            url=jdbc_mysql_url,
+            driver=driver_name,
+            dbtable=LATEST_DATA_TABLE_NAME,
+            user=config['DATABASE']['MYSQL_USER'],
+            password=config['DATABASE']['MYSQL_PASSWORD']).load()
+...
+
+latest_df.write.format('jdbc').options(
+                truncate=True,
+                url=jdbc_mysql_url,
+                driver=driver_name,
+                dbtable=LATEST_DATA_TABLE_NAME,
+                user=config['DATABASE']['MYSQL_USER'],
+                password=config['DATABASE']['MYSQL_PASSWORD'])\
+                .option("truncate", True)\
+                .mode('overwrite').save()
+```
+***Cause:*** Spark use a lazy approach that just read metadata from the table but not actual data. When we write with `overwrite` mode with `truncate=True`, Spark truncate the table before reading data from it, so we lost our data before the new update actually write on. 
+
+***Solution:*** Force Spark read data on main memory using `.cache()` and action operation such as `count()`
+```
+# Read data from database
+# <Read code>
+
+latest_df = latest_df.cache()
+latest_df.count()
+# Write data to database
+# <write code>
+```
+
+From mysql 8.0, mysql uses caching_sha2_password for authentication
+```
+mysql> ALTER USER 
 ```
