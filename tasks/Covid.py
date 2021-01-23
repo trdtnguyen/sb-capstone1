@@ -78,8 +78,8 @@ class Covid:
     def extract_us(self):
         conn = self.conn
         logger = self.logger
-        RAW_TABLE_NAME = 'covid19_us_raw'
-        DIM_TABLE_NAME = 'covid19_us_dim'
+        RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_RAW_TABLE_NAME']
+        DIM_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_DIM_TABLE_NAME']
         is_resume_extract = False
         date_col = 12  # the index of date column
 
@@ -318,8 +318,8 @@ class Covid:
     def aggregate_fact_to_monthly_fact_us(self):
         conn = self.conn
         logger = self.logger
-        FACT_TABLE_NAME = 'covid19_us_fact'
-        MONTHLY_FACT_TABLE_NAME = 'covid19_us_monthly_fact'
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_FACT_TABLE_NAME']
+        MONTHLY_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_MONTHLY_FACT_TABLE_NAME']
 
         latest_date = self.GU.START_DEFAULT_DATE
         end_date = self.GU.START_DEFAULT_DATE
@@ -405,8 +405,8 @@ class Covid:
     def transform_raw_to_fact_us(self):
 
         logger = self.logger
-        RAW_TABLE_NAME = 'covid19_us_raw'
-        FACT_TABLE_NAME = 'covid19_us_fact'
+        RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_RAW_TABLE_NAME']
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_FACT_TABLE_NAME']
         is_resume_extract = False
 
         latest_date = self.GU.START_DEFAULT_DATE
@@ -477,10 +477,9 @@ class Covid:
     def transform_raw_to_dim_country(self):
         conn = self.conn
         logger = self.logger
-        RAW_TABLE_NAME = 'covid19_global_raw'
-        DIM_TABLE_NAME = 'country_dim'
-        #COUNTRY_TABLE_NAME = 'world.country'
-        COUNTRY_TABLE_NAME = 'world_country'
+        RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_RAW_TABLE_NAME']
+        DIM_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_DIM_TABLE_NAME']
+        COUNTRY_TABLE_NAME = self.GU.CONFIG['DATABASE']['COUNTRY_TABLE_NAME']
 
         #######################################
         # Step 1 Read from database to determine the last written data point
@@ -535,8 +534,8 @@ class Covid:
     def aggregate_fact_to_monthly_fact_global(self):
         conn = self.conn
         logger = self.logger
-        FACT_TABLE_NAME = 'covid19_global_fact'
-        MONTHLY_FACT_TABLE_NAME = 'covid19_global_monthly_fact'
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_FACT_TABLE_NAME']
+        MONTHLY_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_MONTHLY_FACT_TABLE_NAME']
 
         latest_date = self.GU.START_DEFAULT_DATE
         end_date = self.GU.START_DEFAULT_DATE
@@ -617,9 +616,10 @@ class Covid:
     def transform_raw_to_fact_global(self):
 
         logger = self.logger
-        RAW_TABLE_NAME = 'covid19_global_raw'
-        FACT_TABLE_NAME = 'covid19_global_fact'
-        DIM_TABLE_NAME = 'country_dim'
+        RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_RAW_TABLE_NAME']
+        DIM_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_DIM_TABLE_NAME']
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_FACT_TABLE_NAME']
+
         is_resume_extract = False
 
         latest_date = self.GU.START_DEFAULT_DATE
