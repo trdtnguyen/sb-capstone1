@@ -64,10 +64,9 @@ API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_cov
 PD Datareader | fred   | Financial | nasdaq100 | daily | NASDAQ 100 Index
 PD Datareader | fred   | Financial | sp500 | daily | S&P 500 Index
 PD Datareader | fred   | Financial | djia | daily | Dow Jones Industrial Average
-PD Datareader | fred   | Labor market | [payms]() | monthly | All Employees, Total Nonfarm
+PD Datareader | fred   | Labor market | payms | monthly | All Employees, Total Nonfarm
 PD Datareader | fred   | Labor market | [CES4348100001](https://fred.stlouisfed.org/series/CES4348100001) | monthly | All Employees, Air Transportation
 PD Datareader | fred   | Labor market | [CES6562000101](https://fred.stlouisfed.org/series/CES6562000101) | monthly | All Employees, Health Care
-
 PD Datareader | fred   | Labor market | [CES6561000001](https://fred.stlouisfed.org/series/CES6561000001) | monthly | All Employees, Educational Services
 PD Datareader | fred   | Labor market | [CES7071000001](https://fred.stlouisfed.org/series/CES7071000001) | monthly | All Employees, Arts, Entertainment, and Recreation
 PD Datareader | fred   | Labor market | [unrate](https://fred.stlouisfed.org/series/UNRATE) | monthly | Unemployment Rate
