@@ -129,6 +129,7 @@ currentday
 
 ### Stock Prices
 * Currently, there are three methods to get stock prices: [Yahoo Finance API](https://pypi.org/project/yahoo-finance/), [Google Finance API](https://pypi.org/project/googlefinance/), and [pandas_datareader](https://learndatasci.com/tutorials/python-finance-part-yahoo-finance-api-pandas-matplotlib/). Only the last one work.
+* Detail on pandas Datareader remote resources could be found [here](https://pandas-datareader.readthedocs.io/en/latest/remote_data.html).
 
 * Type: Time series
 * Supported methods: API, json
