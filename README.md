@@ -57,6 +57,10 @@ Below is the summary of data sources in this project:
 
 Method | Source | Categories | Feature/Key | Frequency | Description
 --------------|--------|-----------|-----------|-------|-----------------
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases US | daily | Covid-19 confirmed cases in the US
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths US | daily | Covid-19 deaths in the US
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases Global | daily | Covid-19 confirmed in the world
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths cases Global | daily | Covid-19 deaths in the world
 PD Datareader | fred   | Financial | nasdaq100 | daily | NASDAQ 100 Index
 PD Datareader | fred   | Financial | sp500 | daily | S&P 500 Index
 PD Datareader | fred   | Financial | djia | daily | Dow Jones Industrial Average
