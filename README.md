@@ -49,6 +49,24 @@ Table                 | Rows     | Columns | AVG row length | Table size | Perio
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
 
+We found that pandas datareader is a great tool to get various data sources. 
+
+Detail on pandas Datareader remote resources could be found [here](https://pandas-datareader.readthedocs.io/en/latest/remote_data.html).
+
+Below is the summary of data sources in this project:
+
+Method | Source | Categories | Feature/Key | Frequency | Description
+--------------|--------|-----------|-----------|-------|-----------------
+PD Datareader | fred   | Financial | nasdaq100 | daily | NASDAQ 100 Index
+PD Datareader | fred   | Financial | sp500 | daily | S&P 500 Index
+PD Datareader | fred   | Financial | djia | daily | Dow Jones Industrial Average
+PD Datareader | fred   | Labor market | [payms]() | monthly | All Employees, Total Nonfarm
+PD Datareader | fred   | Labor market | [unrate](https://fred.stlouisfed.org/series/UNRATE) | monthly | Unemployment Rate
+PD Datareader | fred   | Labor market | [jtsjol](https://fred.stlouisfed.org/series/JTSJOL) | monthly | Job Openings: Total Nonfarm
+PD Datareader | fred   | Labor market | [LNS13023653](https://fred.stlouisfed.org/series/LNS13023653) | monthly | Unemployment Level - Job Losers on Layoff
+
+
+
 ### Covid-19
 * This datase has two subsets: global and the US.
 * [Data source](https://covidtracking.com/data), [JHU CSSE Covid-19 Dataset](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)
@@ -129,7 +147,7 @@ currentday
 
 ### Stock Prices
 * Currently, there are three methods to get stock prices: [Yahoo Finance API](https://pypi.org/project/yahoo-finance/), [Google Finance API](https://pypi.org/project/googlefinance/), and [pandas_datareader](https://learndatasci.com/tutorials/python-finance-part-yahoo-finance-api-pandas-matplotlib/). Only the last one work.
-* Detail on pandas Datareader remote resources could be found [here](https://pandas-datareader.readthedocs.io/en/latest/remote_data.html).
+
 
 * Type: Time series
 * Supported methods: API, json
