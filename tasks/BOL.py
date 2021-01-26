@@ -98,55 +98,12 @@ class BOL:
         #########
         latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
 
-
-
-        # # 1. Resuming extract data.
-        # s = text("SELECT year "
-        #          f"FROM {RAW_TABLE_NAME} "
-        #          "ORDER BY year DESC "
-        #          "LIMIT 1")
-        #
-        # # try:
-        #     ret_list = conn.execute(s).fetchall()
-        #     df_tem = pd.DataFrame(ret_list)
-        #     if len(df_tem) > 0:
-        #         latest_year = df_tem.iloc[0][0]
-        #         if latest_year > end_year:
-        #             print(f'database last update on {latest_year} '
-        #                   f'that is later than the end date {end_year}. No further extract needed')
-        #             return
-        #         else:
-        #             print(f'set start_year to {latest_year}')
-        #             start_year = latest_year
-        #
-        # except pymysql.OperationalError as e:
-        #     logger.error(f'Error Query when get latest year in {RAW_TABLE_NAME}')
-        #     print(e)
-
         #########
         ### Step 3 Read series from database
         #########
         print('Read series ...', end=  " ")
         dim_df = self.GU.read_from_db(self.spark, DIM_TABLE_NAME)
-        # s = text("SELECT series_id "
-        #          f"FROM {DIM_TABLE_NAME} "
-        #          )
-        #     #series_ids = ['CUUR0000SA0', 'SUUR0000SA0']
-        # try:
-        #     ret_list = conn.execute(s).fetchall()
-        #     df_tem = pd.DataFrame(ret_list)
-        #     if len(df_tem) > 0:
-        #         series_ids_tem = df_tem.values.tolist() # Get array of array
-        #         series_ids = [arr[0] for arr in series_ids_tem]
-        #     else:
-        #         logger.error('The series_ids is empty')
-        #         print('The series_ids is empty')
-        #         return
-        #
-        # except pymysql.OperationalError as e:
-        #     logger.error('Error Query when get latest year in BOL_raw')
-        #     print(e)
-        # print("Done. Number of series: ", len(series_ids))
+
 
         #########
         ### Step 4 Extract data from BOL using API
