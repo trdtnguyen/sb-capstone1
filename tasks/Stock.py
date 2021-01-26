@@ -651,44 +651,14 @@ class Stock:
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
-        # try:
-        #     result = conn.execute(s)
-        #     keys = result.keys()
-        #     ret_list = result.fetchall()
-        #     # transform the datetime to dateid
-        #     insert_list = []
-        #     for row in ret_list:
-        #         insert_val = {}
-        #
-        #         year = row[1]
-        #         month = row[2]
-        #         insert_date = datetime(year, month, 1)
-        #         date_str = insert_date.strftime('%Y-%m-%d')
-        #
-        #         dateid = int(date_str.replace('-', ''))
-        #         insert_val['dateid'] = dateid
-        #         insert_val['stock_ticker'] = row[0]
-        #         insert_val['date'] = insert_date
-        #         insert_val['year'] = year
-        #         insert_val['month'] = month
-        #         insert_val['month_name'] = row[3]
-        #         insert_val['High'] = row[4]
-        #         insert_val['Low'] = row[5]
-        #         insert_val['Open'] = row[6]
-        #         insert_val['Close'] = row[7]
-        #         insert_val['Volume'] = row[8]
-        #         insert_val['adj_close'] = row[9]
-        #
-        #         insert_list.append(insert_val)
-        #
-        #     df = pd.DataFrame(insert_list)
-        #     if len(df) > 0:
-        #         # df.to_sql(MONTHLY_FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
-        #         df.to_sql(MONTHLY_FACT_TABLE_NAME, conn, schema=None, if_exists='replace', index=False)
-        # except pymysql.OperationalError as e:
-        #     logger.error(f'Error Query when transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}')
-        #     print(e)
-        # print('Done.')
+
+    """
+        Dependencies:
+            extract_sp500_tickers ->
+            extract_batch_stock() ->
+            transform_raw_to_fact_stock() ->
+            aggregate_fact_to_monthly_fact_stock
+    """
 
 
 

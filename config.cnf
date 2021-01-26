@@ -39,6 +39,7 @@ BOL_SERIES_RAW_TABLE_NAME=bol_series_raw
 BOL_SERIES_DIM_TABLE_NAME=bol_series_dim
 BOL_SERIES_FACT_TABLE_NAME=bol_series_fact
 
+COVID_STOCK_FACT_TABLE_NAME=covid_stock_fact
 
 [COVID19]
 COVID19_CONFIRMED_US_URL=https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv
