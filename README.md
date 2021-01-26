@@ -3,26 +3,30 @@ Updated: Added story telling [Slide deck](https://docs.google.com/presentation/d
 
 ## Techniques
 This section list common Data Engineering techniques and general programming techniques used in this project.
-### ETL
+#### ETL
 * Extract data source using various methods such as pandas' Datareader, parsing HTML page, API.
 * Manipulate Spark's Dataframe and pandas Dataframe to load, cleaning, transforming data from raw tables to dimensional and fact tables.
    * Add/remove columns into/from a Dataframe
    * Transpose Dataframe's columns into rows
    * Aggregate data from daily frequency into montly frequency
-### Data pipeline scheduling
+#### Data pipeline scheduling
 * Exploit Apache Airflow to schedule ETL tasks
-### Database Design, SQL
+#### Database Design, SQL
 * Using MySQL as the back-end RDBMS for data wareshouse with star schema.
 * The front-end apps (ETL tasks) use ODBC connector (for pyspark) and SqlAchemy for pandas.
-### Restful API, Tablue, Jupyter notebook
+* Data transform in ETL tasks combine both SQL and pyspark's APIs.
+#### Restful API, Tablue, Jupyter notebook
 * Project support various front-end interfaces such as RESTful API using Flask, Tablue, and Jupyter notebook
-### Docker, docker-compose
+#### Docker, docker-compose
 * Packing airflow, spark, mysql into one docker container
 * App image wait for database image ready
 
-
-
-### Python programming
+#### Python programming
+* Object-oriented programming in Python.
+* Load configuration values through config.cnf file
+* Exploit singleton desgin pattern to use a GlobalUtil class as a common shared utility between other classes in the project
+* Logging
+* Unit test using pytest.
 
 
 ## 1. Problem Definition
