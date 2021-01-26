@@ -13,6 +13,7 @@ from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
 
 from db.DB import DB
 import pandas as pd
+from pandas_datareader import wb
 import configparser
 from pandas_datareader import data
 from sqlalchemy.sql import text
@@ -20,6 +21,7 @@ from datetime import timedelta, datetime
 
 import requests
 import bs4 as bs
+import math # for isnan()
 
 DEFAULT_TICKER_FILE = 'sp500tickers.txt'
 DEFAULT_ERROR_TICKER_FILE='sp500_error_tickers.txt'
@@ -353,7 +355,152 @@ class Stock:
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Extract all data Done.')
+    """
+    Extract major stock indexes from Fred (NASDAQ100, SP500, DOW JONES)
+    """
+    def extract_major_stock_indexes(self):
+        logger = self.logger
+        STOCK_INDEXES=self.GU.CONFIG['DATABASE']['STOCK_INDEXES']
+        stock_index_arr = STOCK_INDEXES.split(' ')
 
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['STOCK_INDEX_FACT_TABLE_NAME']
+        is_resume_extract = False
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
+        start_date = datetime(2020, 1, 2)
+
+
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
+
+        end_date = datetime.now()
+
+        if is_resume_extract:
+            # we only compare two dates by day, month, year excluding time
+            if latest_date.day == end_date.day and \
+                    latest_date.month == end_date.month and \
+                    latest_date.year == end_date.year:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                start_date = latest_date
+
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 2 Extract data
+        #########
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
+        print('Extract stocks indexes...', end=' ')
+        insert_list = []
+        try:
+            stock_df = data.DataReader(stock_index_arr, 'fred', start_date_str, end_date_str)
+            prev_vals = [0] * len(stock_index_arr)
+            for i, row in stock_df.iterrows():
+                for j in range(len(stock_index_arr)):
+                    insert_val = {}
+                    insert_val['stock_index'] = stock_index_arr[j]
+                    # insert_val['date'] = i.strftime('%Y-%m-%d')
+                    insert_val['date'] = i
+                    insert_val['dateid'] = from_date_to_dateid(i)
+                    # Handle nan
+                    val = float(row[j])
+                    if val is None or math.isnan(val):
+                        val = prev_vals[j]
+                    else:
+                        prev_vals[j] = val
+                    insert_val['index_value'] = val
+                    insert_list.append(insert_val)
+        except Exception as e:
+            print(e)
+
+        #########
+        ### Step 3 Write on Database
+        #########
+        print('Done. Insert into database ...', end=' ')
+        df = pd.DataFrame(insert_list)
+        try:
+            df.to_sql(FACT_TABLE_NAME, self.conn, schema=None, if_exists='append', index=False)
+            # manually insert a dictionary will not work due to the limitation number of records insert
+            # results = conn.execute(table.insert(), insert_list)
+        except ValueError:
+            logger.error(f'Error Query when extracting data for {FACT_TABLE_NAME} table')
+        print('Done.')
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+
+    """
+    From stock_index_fact -> stock_index_monthly_fact
+    """
+    def aggregate_fact_to_monthly_fact_stock_index(self):
+        logger = self.logger
+        FACT_TABLE_NAME = 'stock_index_fact'
+        MONTHLY_FACT_TABLE_NAME = 'stock_index_monthly_fact'
+
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            self.GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
+        # 1. Transform from raw to fact table
+        end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = fact_df.count()
+                fact_df = fact_df.filter(
+                    fact_df['date'] > latest_date
+                )
+                after = fact_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        #########
+        ### Step 2 Update latest date
+        #########
+        latest_df = self.GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 3 Transform
+        #########
+        print(f'Transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
+        fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
+
+        s = "SELECT dateid, stock_index, YEAR(date), MONTH(date), " + \
+            "AVG(index_value) " + \
+            f"FROM {FACT_TABLE_NAME} " + \
+            "GROUP BY dateid, stock_index, YEAR(date), MONTH(date) " + \
+            "ORDER BY dateid, stock_index, YEAR(date), MONTH(date) "
+
+        df = self.spark.sql(s)
+        # Change columns name by index to match the schema
+        df = df.toDF('dateid', 'stock_index', 'year', 'month', 'index_value')
+        first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('date', first_day_udf(df['year'], df['month']))
+        df = df.withColumn('month_name', month_name_udf(df['date']))
+        # Reorder the columns to match the schema
+        df = df.select(df['dateid'], df['stock_index'], df['date'], df['year'], df['month'],
+                       df['month_name'], df['index_value'])
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+        print('Done.')
     """
         Dependencies:
             extract_sp500_tickers ->
@@ -546,17 +693,19 @@ class Stock:
 
 
 
-#self.GU = GlobalUtil.instance()
-# # spark = SparkSession \
-# #     .builder \
-# #     .appName("sb-miniproject6") \
-# #     .config("spark.some.config.option", "some-value") \
-# #     .getOrCreate()
-# # # Enable Arrow-based columnar data transfers
-# spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
-#
-# stock = Stock(spark)
-#
+
+spark = SparkSession \
+    .builder \
+    .appName("sb-miniproject6") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+# Enable Arrow-based columnar data transfers
+spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+
+stock = Stock(spark)
+stock.extract_major_stock_indexes()
+stock.aggregate_fact_to_monthly_fact_stock_index()
+
 # stock.extract_sp500_tickers()
 # stock.extract_batch_stock()
 # stock.transform_raw_to_fact_stock()
@@ -566,6 +715,10 @@ class Stock:
 # end_date = datetime(2021,1,1)
 # start_date_str = '2020-01-01'
 # end_date_str = '2021-01-01'
-# # df = data.DataReader(['sp500'], 'yahoo', start_date, end_date)
-# df = data.DataReader(['A', 'FB', 'AAA'], 'yahoo', start_date_str, end_date_str)
+# df = data.DataReader(['nasdaq100', 'sp500', 'djia'], 'fred', start_date, end_date)
+# # # df = data.DataReader(['A', 'FB', 'AAA'], 'yahoo', start_date_str, end_date_str)
+# # print(type(df))
+# print(type(df.columns))
+# print(list(df.columns))
 # print(df)
+

@@ -1,3 +1,4 @@
+INSERT INTO bol_series_dim VALUES('payms', 'Labor market', 'All Employees, Total Nonfarm', '');
 INSERT INTO bol_series_dim VALUES('LNS14000000', 'Unemployment Rate', 'overall', '');
 INSERT INTO bol_series_dim VALUES('LNS14000006', 'Unemployment Rate', 'race', 'Black or African American');
 INSERT INTO bol_series_dim VALUES('LNS14000009', 'Unemployment Rate', 'race', 'Hispanic or Latino');
@@ -8,3 +9,16 @@ INSERT INTO bol_series_dim VALUES('LNU04032218', 'Unemployment Rate', 'occupatio
 INSERT INTO bol_series_dim VALUES('LNU04032219', 'Unemployment Rate', 'occupation', 'Sales and Office Occupations');
 INSERT INTO bol_series_dim VALUES('LNU04032222', 'Unemployment Rate', 'occupation', 'Natural Resources, Construction, and Maintenance Occupations');
 INSERT INTO bol_series_dim VALUES('LNU04032226', 'Unemployment Rate', 'occupation', 'Production, Transportation and Material Moving Occupations');
+INSERT INTO bol_series_dim VALUES('CES4348100001', 'Labor market', 'All Employees, Air Transportation', '');
+INSERT INTO bol_series_dim VALUES('CES6562000101', 'Labor market', 'All Employees, Health Care', '');
+INSERT INTO bol_series_dim VALUES('CES6561000001', 'Labor market', 'All Employees, Educational Services', '');
+INSERT INTO bol_series_dim VALUES('CES7071000001', 'Labor market', 'All Employees, Arts, Entertainment, and Recreation', '');
+INSERT INTO bol_series_dim VALUES('unrate', 'Labor market', 'Unemployment Rate', '');
+INSERT INTO bol_series_dim VALUES('jtsjol', 'Labor market', 'Job Openings: Total Nonfarm', '');
+INSERT INTO bol_series_dim VALUES('LNS13023653', 'Labor market', 'Unemployment Level - Job Losers on Layoff', '');
+INSERT INTO bol_series_dim VALUES('VMTD11', 'Production & Business Activity', 'Vehicle Miles Traveled', '');
+INSERT INTO bol_series_dim VALUES('AIRRPMTSID11', 'Production & Business Activity', 'Air Revenue Passenger Miles', '');
+INSERT INTO bol_series_dim VALUES('MRTSSM7225USN', 'Production & Business Activity', 'Retail Sales: Restaurants and Other Eating Places', '');
+INSERT INTO bol_series_dim VALUES('MRTSSM4541USS', 'Production & Business Activity', 'Retail Sales: Electronic Shopping and Mail-order Houses', '');
+INSERT INTO bol_series_dim VALUES('MRTSSM4451USS', 'Production & Business Activity', 'Retail Sales: Grocery Stores', '');
+INSERT INTO bol_series_dim VALUES('MRTSSM446USS', 'Production & Business Activity', 'Retail Sales: Health and Personal Care Stores', '');

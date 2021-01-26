@@ -8,6 +8,8 @@ DROP TABLE IF EXISTS country_dim;
 DROP TABLE IF EXISTS covid19_global_raw;
 DROP TABLE IF EXISTS covid19_us_raw;
 
+DROP TABLE IF EXISTS stock_index_monthly_fact;
+DROP TABLE IF EXISTS stock_index_fact;
 DROP TABLE IF EXISTS stock_price_monthly_fact;
 DROP TABLE IF EXISTS stock_price_fact;
 DROP TABLE IF EXISTS stock_ticker_raw;
@@ -15,7 +17,9 @@ DROP TABLE IF EXISTS stock_price_raw;
 
 DROP TABLE IF EXISTS bol_series_fact;
 DROP TABLE IF EXISTS bol_series_dim;
-DROP TABLE IF EXISTS bol_raw;
+DROP TABLE IF EXISTS bol_series_raw;
+
+DROP TABLE IF EXISTS covid_stock_fact
 
 /*global table for resuming extraction*/
 CREATE TABLE IF NOT EXISTS latest_data(
@@ -23,21 +27,24 @@ CREATE TABLE IF NOT EXISTS latest_data(
     latest_date datetime NOT NULL,
     PRIMARY KEY (table_name)
 );
-INSERT INTO latest_data VALUES("covid19_us_monthly_fact", "1990-01-01");
-INSERT INTO latest_data VALUES("covid19_us_fact", "1990-01-01");
-INSERT INTO latest_data VALUES("covid19_us_dim", "1990-01-01");
-INSERT INTO latest_data VALUES("covid19_global_monthly_fact", "1990-01-01");
-INSERT INTO latest_data VALUES("covid19_global_fact", "1990-01-01");
-INSERT INTO latest_data VALUES("country_dim", "1990-01-01");
-INSERT INTO latest_data VALUES("covid19_global_raw", "1990-01-01");
-INSERT INTO latest_data VALUES("covid19_us_raw", "1990-01-01");
-INSERT INTO latest_data VALUES("stock_price_monthly_fact", "1990-01-01");
-INSERT INTO latest_data VALUES("stock_price_fact", "1990-01-01");
-INSERT INTO latest_data VALUES("stock_ticker_raw", "1990-01-01");
-INSERT INTO latest_data VALUES("stock_price_raw", "1990-01-01");
-INSERT INTO latest_data VALUES("bol_series_fact", "1990-01-01");
-INSERT INTO latest_data VALUES("bol_series_dim", "1990-01-01");
-INSERT INTO latest_data VALUES("bol_raw", "1990-01-01");
+SET @default_date = "1990-01-01";
+INSERT INTO latest_data VALUES("covid19_us_monthly_fact", @default_date);
+INSERT INTO latest_data VALUES("covid19_us_fact", @default_date);
+INSERT INTO latest_data VALUES("covid19_us_dim", @default_date);
+INSERT INTO latest_data VALUES("covid19_global_monthly_fact", @default_date);
+INSERT INTO latest_data VALUES("covid19_global_fact", @default_date);
+INSERT INTO latest_data VALUES("country_dim", @default_date);
+INSERT INTO latest_data VALUES("covid19_global_raw", @default_date);
+INSERT INTO latest_data VALUES("covid19_us_raw", @default_date);
+INSERT INTO latest_data VALUES("stock_index_monthly_fact", @default_date);
+INSERT INTO latest_data VALUES("stock_index_fact", @default_date);
+INSERT INTO latest_data VALUES("stock_price_monthly_fact", @default_date);
+INSERT INTO latest_data VALUES("stock_price_fact", @default_date);
+INSERT INTO latest_data VALUES("stock_ticker_raw", @default_date);
+INSERT INTO latest_data VALUES("stock_price_raw", @default_date);
+INSERT INTO latest_data VALUES("bol_series_fact", @default_date);
+INSERT INTO latest_data VALUES("bol_series_dim", @default_date);
+INSERT INTO latest_data VALUES("bol_series_raw", @default_date);
 
 /*dimension table used for extracting raw data*/
 CREATE TABLE IF NOT EXISTS covid19_us_raw (
@@ -181,6 +188,15 @@ CREATE TABLE IF NOT EXISTS stock_ticker_raw(
     PRIMARY KEY(ticker)
 );
 
+CREATE TABLE IF NOT EXISTS stock_index_fact(
+    dateid BIGINT NOT NULL, -- number in YYYYmmdd format
+    stock_index VARCHAR(16) NOT NULL,
+    date datetime NOT NULL,
+    index_value double NOT NULL,
+
+    PRIMARY KEY(dateid, stock_index)
+);
+
 CREATE TABLE IF NOT EXISTS stock_price_fact(
 	dateid BIGINT NOT NULL, -- number in YYYYmmdd format
     stock_ticker VARCHAR(16) NOT NULL,
@@ -192,8 +208,19 @@ CREATE TABLE IF NOT EXISTS stock_price_fact(
     Volume double NOT NULL,
     adj_close double NOT NULL,
     
-    PRIMARY KEY(dateid, stock_ticker),
-    FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_raw(ticker)
+    PRIMARY KEY(dateid, stock_ticker)
+);
+
+CREATE TABLE IF NOT EXISTS stock_index_monthly_fact(
+    dateid BIGINT NOT NULL, -- number in YYYYmmdd format
+    stock_index VARCHAR(16) NOT NULL,
+    date datetime NOT NULL,
+    year int NOT NULL,
+    month int NOT NULL,
+    month_name VARCHAR(32),
+    index_value double NOT NULL,
+
+    PRIMARY KEY(dateid, stock_index)
 );
 
 CREATE TABLE IF NOT EXISTS stock_price_monthly_fact(
@@ -203,19 +230,17 @@ CREATE TABLE IF NOT EXISTS stock_price_monthly_fact(
     year int NOT NULL,
     month int NOT NULL,
     month_name VARCHAR(32),
-    
     High double NOT NULL,
     Low double NOT NULL,
     Open double NOT NULL,
     Close double NOT NULL,
     Volume double NOT NULL,
     adj_close double NOT NULL,
-    
-    PRIMARY KEY(dateid, stock_ticker),
-    FOREIGN KEY(stock_ticker) REFERENCES stock_ticker_raw(ticker)
+
+    PRIMARY KEY(dateid, stock_ticker)
 );
 
-CREATE TABLE IF NOT EXISTS bol_raw(
+CREATE TABLE IF NOT EXISTS bol_series_raw(
     series_id VARCHAR(64) NOT NULL, -- matched with series_id from raw data
     year INT NOT NULL, 
     period VARCHAR(8), -- month
@@ -246,4 +271,18 @@ CREATE TABLE IF NOT EXISTS bol_series_fact(
     FOREIGN KEY(series_id) references bol_series_dim(series_id)
 );
 
+
+/*Join tables aggregated from covid19_us_fact, covid19_global_fact, stock_price_fact*/
+CREATE TABLE IF NOT EXISTS covid_stock_fact (
+    dateid BIGINT NOT NULL,
+    date datetime NOT NULL,
+    us_confirmed int NOT NULL,
+    us_deaths int NOT NULL,
+    global_confirmed int NOT NULL,
+    global_deaths int NOT NULL,
+    sp500_score double NOT NULL,
+    nasdaq100_score double NOT NULL,
+    dowjones_score double NOT NULL,
+    PRIMARY KEY(dateid)
+);
 
