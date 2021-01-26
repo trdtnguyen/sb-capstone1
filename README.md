@@ -1,5 +1,34 @@
 # Correlation between Covid-19 and Economic
 Updated: Added story telling [Slide deck](https://docs.google.com/presentation/d/1af-YRE0olJoWg0lmaxU_24MULDHB_1eP6vQqhRHNPLw/edit?usp=sharing) that walks you through the progress of building this project.
+
+## Techniques
+This section list common Data Engineering techniques and general programming techniques used in this project.
+#### ETL
+* Extract data source using various methods such as pandas' Datareader, parsing HTML page, API.
+* Manipulate Spark's Dataframe and pandas Dataframe to load, cleaning, transforming data from raw tables to dimensional and fact tables.
+   * Add/remove columns into/from a Dataframe
+   * Transpose Dataframe's columns into rows
+   * Aggregate data from daily frequency into montly frequency
+#### Data pipeline scheduling
+* Exploit Apache Airflow to schedule ETL tasks
+#### Database Design, SQL
+* Using MySQL as the back-end RDBMS for data wareshouse with star schema.
+* The front-end apps (ETL tasks) use ODBC connector (for pyspark) and SqlAchemy for pandas.
+* Data transform in ETL tasks combine both SQL and pyspark's APIs.
+#### Restful API, Tablue, Jupyter notebook
+* Project support various front-end interfaces such as RESTful API using Flask, Tablue, and Jupyter notebook
+#### Docker, docker-compose
+* Packing airflow, spark, mysql into one docker container
+* App image wait for database image ready
+
+#### Python programming
+* Object-oriented programming in Python.
+* Load configuration values through config.cnf file
+* Exploit singleton desgin pattern to use a GlobalUtil class as a common shared utility between other classes in the project
+* Logging
+* Unit test using pytest.
+
+
 ## 1. Problem Definition
 Covid-19 has attacked humankind for nearly ten months that not only infects millions of people but also affects all aspects of our life. The main reason for those strugglings is we didn’t have enough knowledge about the virus to effectively prevent it. If we know exactly what and when an industry sector is affected by the pandemic, we could have better strategies to address the problem. This project visualized the changes of covid-19 cases and deaths along with related features such as stock prices, unemployment rate, business bankruptcy in the same time frame. For each timeframe, we classify an interesting feature into groups.
 
@@ -48,6 +77,42 @@ Table                 | Rows     | Columns | AVG row length | Table size | Perio
 
 ## 4. Building the datasets (Extract)
 In this section, we describle in detail how to get data from datasources.
+
+We found that pandas datareader is a great tool to get various data sources. 
+
+Detail on pandas Datareader remote resources could be found [here](https://pandas-datareader.readthedocs.io/en/latest/remote_data.html).
+
+Below is the summary of data sources in this project:
+
+Method | Source | Categories | Feature/Key | Frequency | Description
+--------------|--------|-----------|-----------|-------|-----------------
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases US | daily | Covid-19 confirmed cases in the US
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths US | daily | Covid-19 deaths in the US
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases Global | daily | Covid-19 confirmed in the world
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths cases Global | daily | Covid-19 deaths in the world
+PD Datareader | fred   | Financial | nasdaq100 | daily | NASDAQ 100 Index
+PD Datareader | fred   | Financial | sp500 | daily | S&P 500 Index
+PD Datareader | fred   | Financial | djia | daily | Dow Jones Industrial Average
+PD Datareader | fred   | Labor market | payms | monthly | All Employees, Total Nonfarm
+PD Datareader | fred   | Labor market | [CES4348100001](https://fred.stlouisfed.org/series/CES4348100001) | monthly | All Employees, Air Transportation
+PD Datareader | fred   | Labor market | [CES6562000101](https://fred.stlouisfed.org/series/CES6562000101) | monthly | All Employees, Health Care
+PD Datareader | fred   | Labor market | [CES6561000001](https://fred.stlouisfed.org/series/CES6561000001) | monthly | All Employees, Educational Services
+PD Datareader | fred   | Labor market | [CES7071000001](https://fred.stlouisfed.org/series/CES7071000001) | monthly | All Employees, Arts, Entertainment, and Recreation
+PD Datareader | fred   | Labor market | [unrate](https://fred.stlouisfed.org/series/UNRATE) | monthly | Unemployment Rate
+PD Datareader | fred   | Labor market | [jtsjol](https://fred.stlouisfed.org/series/JTSJOL) | monthly | Job Openings: Total Nonfarm
+PD Datareader | fred   | Labor market | [LNS13023653](https://fred.stlouisfed.org/series/LNS13023653) | monthly | Unemployment Level - Job Losers on Layoff
+PD Datareader | fred   | Production & Business Activity  | [VMTD11](https://fred.stlouisfed.org/series/VMTD11) | monthly | Vehicle Miles Traveled
+PD Datareader | fred   | Production & Business Activity  | [AIRRPMTSID11](https://fred.stlouisfed.org/series/AIRRPMTSID11) | monthly | Air Revenue Passenger Miles
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM7225USN](https://fred.stlouisfed.org/series/MRTSSM7225USN) | monthly | Retail Sales: Restaurants and Other Eating Places
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM4541USS](https://fred.stlouisfed.org/series/MRTSSM4541USS) | monthly | Retail Sales: Electronic Shopping and Mail-order Houses
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM4451USS](https://fred.stlouisfed.org/series/MRTSSM4451USS) | monthly | Retail Sales: Grocery Stores
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM446USS](https://fred.stlouisfed.org/series/MRTSSM446USS) | monthly | Retail Sales: Health and Personal Care Stores
+
+
+
+
+
+
 
 ### Covid-19
 * This datase has two subsets: global and the US.
@@ -129,6 +194,7 @@ currentday
 
 ### Stock Prices
 * Currently, there are three methods to get stock prices: [Yahoo Finance API](https://pypi.org/project/yahoo-finance/), [Google Finance API](https://pypi.org/project/googlefinance/), and [pandas_datareader](https://learndatasci.com/tutorials/python-finance-part-yahoo-finance-api-pandas-matplotlib/). Only the last one work.
+
 
 * Type: Time series
 * Supported methods: API, json
@@ -426,10 +492,6 @@ Command | Description
 `$ pytest tests/test_bol.py::test_dim_table_exist` | Test whether data from `bol_series_dim` table existed. This table is isnreted during the init phase during project setup process.
 `$ pytest tests/test_bol.py::test_extract_BOL` | Test extract featured series from BOL data sources by reading each feature from `bol_series_dim` and the API provided.
 `$ pytest tests/test_bol.py::test_transform_raw_to_fact_bol` | Test transform process from `bol_raw` table to `bol_series_fact` table. Note that BOL data set is updated on a montly basic, so we don't need to aggrate the fact table to montly fact as did in other datasets.
-
-
-
-
 
 
 ## Trouble Shootings:
