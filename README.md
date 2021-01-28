@@ -9,6 +9,7 @@ This section list common Data Engineering techniques and general programming tec
    * Add/remove columns into/from a Dataframe
    * Transpose Dataframe's columns into rows
    * Aggregate data from daily frequency into montly frequency
+   * Handling null values (filling null with previous non-null value) using Window functions.
 #### Data pipeline scheduling
 * Exploit Apache Airflow to schedule ETL tasks
 #### Database Design, SQL
