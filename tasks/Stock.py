@@ -1,12 +1,12 @@
 """
 Extract Stock data from Yahoo! Finance
 """
-__version__ = '0.1'
+__version__ = '0.2'
 __author__ = 'Dat Nguyen'
 
 from tasks.GlobalUtil import GlobalUtil
 
-from pyspark.sql import SparkSession, Row
+from pyspark.sql import SparkSession
 
 from pyspark.sql.types import ArrayType, StructField, StructType, StringType, IntegerType, FloatType, DateType
 from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
@@ -37,6 +37,12 @@ def from_date_to_dateid(date: datetime):
     date_str = date_str.replace('-', '')
     dateid = int(date_str)
     return dateid
+
+def create_first_day_of_month(year: int, month: int):
+    return datetime(year, month, 1)
+
+def create_first_dateid_of_month(year: int, month: int):
+    return from_date_to_dateid(datetime(year, month, 1))
 
 def get_month_name(date):
     month_name = date.strftime('%B')
@@ -399,21 +405,26 @@ class Stock:
         try:
             stock_df = data.DataReader(stock_index_arr, 'fred', start_date_str, end_date_str)
             prev_vals = [0] * len(stock_index_arr)
+
+            #column names got from the ERD
+            COL_NAMES=['dowjones_score', 'nasdaq100_score', 'sp500_score']
             for i, row in stock_df.iterrows():
+                insert_val = {}
+
+                insert_val['date'] = i
+                insert_val['dateid'] = from_date_to_dateid(i)
+
+                # parse value for stock index score columns
                 for j in range(len(stock_index_arr)):
-                    insert_val = {}
-                    insert_val['stock_index'] = stock_index_arr[j]
-                    # insert_val['date'] = i.strftime('%Y-%m-%d')
-                    insert_val['date'] = i
-                    insert_val['dateid'] = from_date_to_dateid(i)
-                    # Handle nan
                     val = float(row[j])
                     if val is None or math.isnan(val):
                         val = prev_vals[j]
                     else:
                         prev_vals[j] = val
-                    insert_val['index_value'] = val
-                    insert_list.append(insert_val)
+                    insert_val[COL_NAMES[j]] = val
+
+                insert_list.append(insert_val)
+
         except Exception as e:
             print(e)
 
@@ -439,7 +450,7 @@ class Stock:
         logger = self.logger
         FACT_TABLE_NAME = 'stock_index_fact'
         MONTHLY_FACT_TABLE_NAME = 'stock_index_monthly_fact'
-
+        COL_NAMES = ['dowjones_score', 'nasdaq100_score', 'sp500_score']
         latest_date = self.GU.START_DEFAULT_DATE
         end_date = self.GU.START_DEFAULT_DATE
         #######################################
@@ -477,22 +488,25 @@ class Stock:
         print(f'Transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
 
-        s = "SELECT dateid, stock_index, YEAR(date), MONTH(date), " + \
-            "AVG(index_value) " + \
+        s = "SELECT YEAR(date), MONTH(date), " + \
+            f"AVG({COL_NAMES[0]}), AVG({COL_NAMES[1]}), AVG({COL_NAMES[2]}) " + \
             f"FROM {FACT_TABLE_NAME} " + \
-            "GROUP BY dateid, stock_index, YEAR(date), MONTH(date) " + \
-            "ORDER BY dateid, stock_index, YEAR(date), MONTH(date) "
+            f"GROUP BY YEAR(date), MONTH(date) " + \
+            "ORDER BY YEAR(date), MONTH(date) "
 
         df = self.spark.sql(s)
         # Change columns name by index to match the schema
-        df = df.toDF('dateid', 'stock_index', 'year', 'month', 'index_value')
+        df = df.toDF('year', 'month', COL_NAMES[0], COL_NAMES[1], COL_NAMES[2])
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y, m), IntegerType())
         month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('month_name', month_name_udf(df['date']))
         # Reorder the columns to match the schema
-        df = df.select(df['dateid'], df['stock_index'], df['date'], df['year'], df['month'],
-                       df['month_name'], df['index_value'])
+        df = df.select(df['dateid'], df['date'], df['year'], df['month'],
+                       df['month_name'], df[COL_NAMES[0]], df[COL_NAMES[1]], df[COL_NAMES[2]]
+                       )
         ####################################
         # Step 4 Write to Database
         ####################################
@@ -624,18 +638,20 @@ class Stock:
         print(f'Transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
 
-        s = "SELECT dateid, stock_ticker, YEAR(date), MONTH(date), " +\
+        s = "SELECT stock_ticker, YEAR(date), MONTH(date), " +\
                  "AVG(High) , AVG(Low), AVG(Open) , AVG(Close), SUM(Volume) , AVG(adj_close) " +\
                  f"FROM {FACT_TABLE_NAME} " +\
-                 "GROUP BY dateid, stock_ticker, YEAR(date), MONTH(date) " + \
-                 "ORDER BY dateid, stock_ticker, YEAR(date), MONTH(date) "
+                 "GROUP BY stock_ticker, YEAR(date), MONTH(date) " + \
+                 "ORDER BY stock_ticker, YEAR(date), MONTH(date) "
 
         df = self.spark.sql(s)
         # Change columns name by index to match the schema
-        df = df.toDF('dateid', 'stock_ticker', 'year', 'month',
+        df = df.toDF('stock_ticker', 'year', 'month',
                      'High', 'Low', 'Open', 'Close', 'Volume', 'adj_close')
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y, m), IntegerType())
         month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('month_name', month_name_udf(df['date']))
 

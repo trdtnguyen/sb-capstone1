@@ -7,6 +7,9 @@ DROP TABLE IF EXISTS covid19_global_fact;
 DROP TABLE IF EXISTS country_dim;
 DROP TABLE IF EXISTS covid19_global_raw;
 DROP TABLE IF EXISTS covid19_us_raw;
+DROP TABLE IF EXISTS covid19_sum_fact;
+DROP TABLE IF EXISTS covid19_sum_monthly_fact;
+
 
 DROP TABLE IF EXISTS stock_index_monthly_fact;
 DROP TABLE IF EXISTS stock_index_fact;
@@ -19,7 +22,8 @@ DROP TABLE IF EXISTS bol_series_fact;
 DROP TABLE IF EXISTS bol_series_dim;
 DROP TABLE IF EXISTS bol_series_raw;
 
-DROP TABLE IF EXISTS covid_stock_fact
+DROP TABLE IF EXISTS covid_stock_fact;
+DROP TABLE IF EXISTS covid_stock_monthly_fact;
 
 /*global table for resuming extraction*/
 CREATE TABLE IF NOT EXISTS latest_data(
@@ -36,6 +40,8 @@ INSERT INTO latest_data VALUES("covid19_global_fact", @default_date);
 INSERT INTO latest_data VALUES("country_dim", @default_date);
 INSERT INTO latest_data VALUES("covid19_global_raw", @default_date);
 INSERT INTO latest_data VALUES("covid19_us_raw", @default_date);
+INSERT INTO latest_data VALUES("covid19_sum_fact", @default_date);
+INSERT INTO latest_data VALUES("covid19_sum_monthly_fact", @default_date);
 INSERT INTO latest_data VALUES("stock_index_monthly_fact", @default_date);
 INSERT INTO latest_data VALUES("stock_index_fact", @default_date);
 INSERT INTO latest_data VALUES("stock_price_monthly_fact", @default_date);
@@ -120,6 +126,7 @@ CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
     FOREIGN KEY(UID) REFERENCES covid19_us_dim(UID)
 );
 
+
 CREATE TABLE IF NOT EXISTS country_dim(
     code VARCHAR(3), -- country's code in 3 leters e.g., CAN
     Name VARCHAR(64), -- country's name e.g., Canada
@@ -163,6 +170,31 @@ CREATE TABLE IF NOT EXISTS covid19_global_monthly_fact(
     FOREIGN KEY (country_code) REFERENCES country_dim(code)
 );
 
+CREATE TABLE IF NOT EXISTS covid19_sum_fact (
+	dateid bigint NOT NULL,
+    date datetime NOT NULL,
+
+    us_confirmed int NOT NULL,
+    us_deaths int NOT NULL,
+    global_confirmed int NOT NULL,
+    global_deaths int NOT NULL,
+
+    PRIMARY KEY(dateid)
+);
+CREATE TABLE IF NOT EXISTS covid19_sum_monthly_fact (
+	dateid bigint NOT NULL,
+    date datetime NOT NULL,
+    year int NOT NULL,
+    month int NOT NULL,
+    month_name VARCHAR(32),
+    us_confirmed int NOT NULL,
+    us_deaths int NOT NULL,
+    global_confirmed int NOT NULL,
+    global_deaths int NOT NULL,
+
+    PRIMARY KEY(dateid)
+);
+
 
 CREATE TABLE IF NOT EXISTS stock_price_raw(
     stock_ticker VARCHAR(16) NOT NULL,
@@ -190,11 +222,12 @@ CREATE TABLE IF NOT EXISTS stock_ticker_raw(
 
 CREATE TABLE IF NOT EXISTS stock_index_fact(
     dateid BIGINT NOT NULL, -- number in YYYYmmdd format
-    stock_index VARCHAR(16) NOT NULL,
     date datetime NOT NULL,
-    index_value double NOT NULL,
+    dowjones_score double NOT NULL,
+    nasdaq100_score double NOT NULL,
+    sp500_score double NOT NULL,
 
-    PRIMARY KEY(dateid, stock_index)
+    PRIMARY KEY(dateid)
 );
 
 CREATE TABLE IF NOT EXISTS stock_price_fact(
@@ -213,14 +246,15 @@ CREATE TABLE IF NOT EXISTS stock_price_fact(
 
 CREATE TABLE IF NOT EXISTS stock_index_monthly_fact(
     dateid BIGINT NOT NULL, -- number in YYYYmmdd format
-    stock_index VARCHAR(16) NOT NULL,
     date datetime NOT NULL,
     year int NOT NULL,
     month int NOT NULL,
     month_name VARCHAR(32),
-    index_value double NOT NULL,
+    dowjones_score double NOT NULL,
+    nasdaq100_score double NOT NULL,
+    sp500_score double NOT NULL,
 
-    PRIMARY KEY(dateid, stock_index)
+    PRIMARY KEY(dateid)
 );
 
 CREATE TABLE IF NOT EXISTS stock_price_monthly_fact(
@@ -285,4 +319,18 @@ CREATE TABLE IF NOT EXISTS covid_stock_fact (
     dowjones_score double NOT NULL,
     PRIMARY KEY(dateid)
 );
-
+CREATE TABLE IF NOT EXISTS covid_stock_monthly_fact (
+    dateid BIGINT NOT NULL,
+    date datetime NOT NULL,
+    year int NOT NULL,
+    month int NOT NULL,
+    month_name VARCHAR(32),
+    us_confirmed int NOT NULL,
+    us_deaths int NOT NULL,
+    global_confirmed int NOT NULL,
+    global_deaths int NOT NULL,
+    sp500_score double NOT NULL,
+    nasdaq100_score double NOT NULL,
+    dowjones_score double NOT NULL,
+    PRIMARY KEY(dateid)
+);

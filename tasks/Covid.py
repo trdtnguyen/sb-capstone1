@@ -14,7 +14,7 @@ from tasks.GlobalUtil import GlobalUtil
 from pyspark.sql import SparkSession
 from pyspark import SparkFiles  # for reading csv file from https
 from pyspark.sql.types import ArrayType, StructField, StructType, StringType, IntegerType, FloatType, DateType
-from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
+from pyspark.sql.functions import array, col, explode, struct, lit, udf, when, expr
 
 from db.DB import DB
 import configparser
@@ -45,8 +45,11 @@ def from_date_to_dateid(date: datetime):
     dateid = int(date_str)
     return dateid
 
-def create_first_day_of_month(month: int, year: int):
+def create_first_day_of_month(year: int, month: int):
     return datetime(year, month, 1)
+
+def create_first_dateid_of_month(year: int, month: int):
+    return from_date_to_dateid(datetime(year, month, 1))
 
 def get_month_name(date):
     month_name = date.strftime('%B')
@@ -362,7 +365,7 @@ class Covid:
         ### Step 3 Transform
         #########
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
-        s = "SELECT UID, YEAR(date), MONTH(date), SUM(confirmed) , SUM(deaths)" + \
+        s = "SELECT UID, YEAR(date), MONTH(date), MAX(confirmed) , MAX(deaths)" + \
             f"FROM {FACT_TABLE_NAME} " + \
             "GROUP BY UID, YEAR(date), MONTH(date)"
 
@@ -577,18 +580,19 @@ class Covid:
         ### Step 3 Transform
         #########
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
-        s = "SELECT dateid, country_code, YEAR(date), MONTH(date), SUM(confirmed) , SUM(deaths) " + \
+        s = "SELECT country_code, YEAR(date), MONTH(date), MAX(confirmed) , MAX(deaths) " + \
             f"FROM {FACT_TABLE_NAME} " + \
-            "GROUP BY dateid, country_code, YEAR(date), MONTH(date) " + \
-            "ORDER BY dateid, country_code, YEAR(date), MONTH(date) "
+            "GROUP BY country_code, YEAR(date), MONTH(date) " + \
+            "ORDER BY country_code, YEAR(date), MONTH(date) "
         df = self.spark.sql(s)
         # Change columns name by index to match the schema
-        df = df.toDF('dateid', 'country_code', 'year', 'month', 'confirmed', 'deaths')
+        df = df.toDF('country_code', 'year', 'month', 'confirmed', 'deaths')
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y, m), IntegerType())
         month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('month_name', month_name_udf(df['date']))
-
         # Reorder the columns to match the schema
         df = df.select(df['dateid'], df['country_code'], df['date'], df['year'],
                        df['month'], df['month_name'], df['confirmed'], df['deaths'])
@@ -700,20 +704,179 @@ class Covid:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
+    """
+    Dependencies:
+        extract_us() ->
+        transform_raw_to_fact_us().
+        extract_global() ->
+        transform_raw_to_fact_global() ->
+        this
+    """
 
+    def aggregate_fact_to_sum_fact(self):
+        logger = self.logger
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_SUM_FACT_TABLE']
+        US_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_FACT_TABLE_NAME']
+        GLOBAL_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_FACT_TABLE_NAME']
+        is_resume_extract = False
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = self.GU.START_DEFAULT_DATE
+        start_date = datetime(2020, 1, 2)
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
+
+        end_date = datetime.now()
+
+        if is_resume_extract:
+            # we only compare two dates by day, month, year excluding time
+            if latest_date.day == end_date.day and \
+                    latest_date.month == end_date.month and \
+                    latest_date.year == end_date.year:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                start_date = latest_date
+
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 2 Read fact tables
+        #########
+        us_fact_df = self.GU.read_from_db(self.spark, US_FACT_TABLE_NAME)
+        us_fact_df.createOrReplaceTempView(US_FACT_TABLE_NAME)
+        global_fact_df = self.GU.read_from_db(self.spark, GLOBAL_FACT_TABLE_NAME)
+        global_fact_df.createOrReplaceTempView(GLOBAL_FACT_TABLE_NAME)
+
+        s = "SELECT dateid, date, " + \
+            "SUM(confirmed) as us_confirmed, SUM(deaths) as us_deaths " + \
+            f" FROM  {US_FACT_TABLE_NAME}" + \
+            f" GROUP BY dateid, date " + \
+            f" ORDER BY dateid, date"
+        tem_us_df = self.spark.sql(s)
+        # tem_us_df.show()
+        tem_us_df.createOrReplaceTempView('tem1')
+
+        s = "SELECT dateid, date, " + \
+            "SUM(confirmed) as global_confirmed, SUM(deaths) as global_deaths " + \
+            f" FROM  {GLOBAL_FACT_TABLE_NAME}" + \
+            f" GROUP BY dateid, date " + \
+            f" ORDER BY dateid, date"
+        tem_global_df = self.spark.sql(s)
+        # tem_global_df.show()
+        tem_global_df.createOrReplaceTempView('tem2')
+
+        s = "SELECT u.dateid, u.date, " + \
+            "us_confirmed, us_deaths, global_confirmed, global_deaths " + \
+            f" FROM tem1 as u, tem2 as g" + \
+            f" WHERE u.dateid=  g.dateid" + \
+            f" ORDER BY u.dateid, u.date"
+        df = self.spark.sql(s)
+        # df.show()
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {FACT_TABLE_NAME}...')
+        self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+        print('Done.')
+
+    """
+    Dependencies:
+        aggregate_fact_to_sum_fact
+    """
+
+    def aggregate_fact_to_sum_monthly_fact(self):
+        logger = self.logger
+        FACT_TABLE_NAME = 'covid19_sum_fact'
+        MONTHLY_FACT_TABLE_NAME = 'covid19_sum_monthly_fact'
+        latest_date = self.GU.START_DEFAULT_DATE
+        end_date = datetime.now()
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            self.GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
+
+        end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = fact_df.count()
+                fact_df = fact_df.filter(
+                    fact_df['date'] > latest_date
+                )
+                after = fact_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        # Update latest date
+        latest_df = self.GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 2 Transform
+        #########
+        print(f'Transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
+        fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
+
+        s = "SELECT YEAR(date), MONTH(date), " + \
+            " MAX(us_confirmed), MAX(us_deaths), " +\
+            "MAX(global_confirmed), MAX(global_deaths) " + \
+            f"FROM {FACT_TABLE_NAME} " + \
+            f"GROUP BY YEAR(date), MONTH(date) " + \
+            "ORDER BY YEAR(date), MONTH(date) "
+
+        df = self.spark.sql(s)
+        # Change columns name by index to match the schema
+        df = df.toDF('year', 'month',
+                     'us_confirmed', 'us_deaths', 'global_confirmed', 'global_deaths')
+        first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y,m), IntegerType())
+        month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
+        df = df.withColumn('date', first_day_udf(df['year'], df['month']))
+        df = df.withColumn('month_name', month_name_udf(df['date']))
+        # Reorder the columns to match the schema
+        df = df.select(df['dateid'], df['date'], df['year'], df['month'],
+                       df['month_name'], df['us_confirmed'], df['us_deaths'],
+                       df['global_confirmed'], df['global_deaths'])
+        df.show()
+        ####################################
+        # Step 3 Write to Database
+        ####################################
+        print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+        print('Done.')
+
+
+
+# Self test
 #GU = GlobalUtil.instance()
 
-# spark = SparkSession \
-#     .builder \
-#     .appName("sb-miniproject6") \
-#     .config("spark.some.config.option", "some-value") \
-#     .getOrCreate()
-# covid = Covid(spark)
-# covid.extract_us()
-# covid.transform_raw_to_fact_us()
-#covid.aggregate_fact_to_monthly_fact_us()
+spark = SparkSession \
+    .builder \
+    .appName("sb-miniproject6") \
+    .config("spark.some.config.option", "some-value") \
+    .getOrCreate()
+covid = Covid(spark)
+covid.extract_us()
+covid.transform_raw_to_fact_us()
+covid.aggregate_fact_to_monthly_fact_us()
+#
+covid.transform_raw_to_dim_country()
+covid.extract_global()
+covid.transform_raw_to_fact_global()
+covid.aggregate_fact_to_monthly_fact_global()
 
-#covid.transform_raw_to_dim_country()
-#covid.extract_global()
-#covid.transform_raw_to_fact_global()
-#covid.aggregate_fact_to_monthly_fact_global()
+covid.aggregate_fact_to_sum_fact()
+covid.aggregate_fact_to_sum_monthly_fact()
