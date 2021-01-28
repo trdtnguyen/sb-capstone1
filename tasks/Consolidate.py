@@ -33,6 +33,9 @@ class Consolidation:
         self.conn = self.db.get_conn()
         self.logger = self.db.get_logger()
 
+    """
+    Consolidate Stock and Covid data on daily basic
+    """
     def consolidate_covid_stock(self):
         logger = self.logger
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
@@ -95,6 +98,83 @@ class Consolidation:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
+    """
+    Aggregate from daily data to monthly data
+    """
+    def aggregate_covid_stock_monthly_fact(self):
+        logger = self.logger
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
+        MONTHLY_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_MONTHLY_FACT_TABLE_NAME']
+
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            self.GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
+
+        end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
+        fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
+
+        if is_resume_extract:
+            if latest_date >= end_date:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                ### Resuming transform
+                before = fact_df.count()
+                fact_df = fact_df.filter(
+                    fact_df['date'] > latest_date
+                )
+                after = fact_df.count()
+                print(f'Skipped {(before - after)} rows')
+
+        latest_df = self.GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
+        #########
+        ### Step 2 Transform
+        #########
+        print(f'Transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
+        fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
+
+        s = "SELECT YEAR(date), MONTH(date), " + \
+            "MAX(us_confirmed) , MAX(us_deaths), MAX(global_confirmed) , MAX(global_deaths), " + \
+            "AVG(sp500_score) , AVG(nasdaq100_score), AVG(dowjones_score) " + \
+            f"FROM {FACT_TABLE_NAME} " + \
+            "GROUP BY YEAR(date), MONTH(date) " + \
+            "ORDER BY YEAR(date), MONTH(date) "
+
+        df = self.spark.sql(s)
+        # Change columns name by index to match the schema
+        df = df.toDF('year', 'month',
+                     'us_confirmed', 'us_deaths', 'global_confirmed', 'global_deaths',
+                     'sp500_score', 'nasdaq100_score', 'dowjones_score')
+        # Add dateid, date, mont_date columns
+        first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
+        first_dateid_udf = udf(lambda y, m: self.GU.create_first_dateid_of_month(y, m), IntegerType())
+        month_name_udf = udf(lambda d: self.GU.get_month_name(d), StringType())
+        df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
+        df = df.withColumn('date', first_day_udf(df['year'], df['month']))
+        df = df.withColumn('month_name', month_name_udf(df['date']))
+
+        # Reorder the columns to match the schema
+        df = df.select(df['dateid'], df['date'], df['year'], df['month'], df['month_name'],
+                       df['us_confirmed'], df['us_deaths'], df['global_confirmed'], df['global_deaths'],
+                       df['sp500_score'], df['nasdaq100_score'], df['dowjones_score']
+                       )
+        df.show()
+        ####################################
+        # Step 4 Write to Database
+        ####################################
+        print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+        print('Done.')
+
+
 
 # self test
 spark = SparkSession \
@@ -105,5 +185,6 @@ spark = SparkSession \
 # Enable Arrow-based columnar data transfers
 spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 
-consolid = Consolidation(spark)
-consolid.consolidate_covid_stock()
+consolidate = Consolidation(spark)
+consolidate.consolidate_covid_stock()
+#consolidate.aggregate_covid_stock_monthly_fact()
