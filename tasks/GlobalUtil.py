@@ -39,6 +39,26 @@ class GlobalUtil(object):
     def __init__(self):
         raise RuntimeError('Call instance() instead')
 
+    # @classmethod
+    # def from_date_to_dateid(cls, date: datetime):
+    #     date_str = date.strftime('%Y-%m-%d')
+    #     date_str = date_str.replace('-', '')
+    #     dateid = int(date_str)
+    #     return dateid
+    #
+    # @classmethod
+    # def create_first_day_of_month(cls, year: int, month: int):
+    #     return datetime(year, month, 1)
+    #
+    # @classmethod
+    # def create_first_dateid_of_month(cls, year: int, month: int):
+    #     return cls.from_date_to_dateid(datetime(year, month, 1))
+    #
+    # @classmethod
+    # def get_month_name(clas, date):
+    #     month_name = date.strftime('%B')
+    #     return month_name
+
     @classmethod
     def instance(cls):
         if cls._instance is None:

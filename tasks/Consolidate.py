@@ -15,6 +15,22 @@ import configparser
 from datetime import timedelta, datetime
 import sys
 
+def from_date_to_dateid(date: datetime):
+    date_str = date.strftime('%Y-%m-%d')
+    date_str = date_str.replace('-', '')
+    dateid = int(date_str)
+    return dateid
+
+def create_first_day_of_month(year: int, month: int):
+    return datetime(year, month, 1)
+
+def create_first_dateid_of_month(year: int, month: int):
+    return from_date_to_dateid(datetime(year, month, 1))
+
+def get_month_name(date):
+    month_name = date.strftime('%B')
+    return month_name
+
 class Consolidation:
     def __init__(self, spark: SparkSession):
         self.GU = GlobalUtil.instance()
@@ -153,18 +169,19 @@ class Consolidation:
                      'sp500_score', 'nasdaq100_score', 'dowjones_score')
         # Add dateid, date, mont_date columns
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
-        first_dateid_udf = udf(lambda y, m: self.GU.create_first_dateid_of_month(y, m), IntegerType())
-        month_name_udf = udf(lambda d: self.GU.get_month_name(d), StringType())
+        first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y, m), IntegerType())
+        month_name_udf = udf(lambda d: get_month_name(d), StringType())
         df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('month_name', month_name_udf(df['date']))
 
+        # df.show()
         # Reorder the columns to match the schema
         df = df.select(df['dateid'], df['date'], df['year'], df['month'], df['month_name'],
                        df['us_confirmed'], df['us_deaths'], df['global_confirmed'], df['global_deaths'],
                        df['sp500_score'], df['nasdaq100_score'], df['dowjones_score']
                        )
-        df.show()
+        # df.show()
         ####################################
         # Step 4 Write to Database
         ####################################
@@ -187,4 +204,4 @@ spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 
 consolidate = Consolidation(spark)
 consolidate.consolidate_covid_stock()
-#consolidate.aggregate_covid_stock_monthly_fact()
+consolidate.aggregate_covid_stock_monthly_fact()

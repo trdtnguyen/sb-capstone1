@@ -607,7 +607,7 @@ class Stock:
         #######################################
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
-        # 1. Transform from raw to fact table
+
         end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
