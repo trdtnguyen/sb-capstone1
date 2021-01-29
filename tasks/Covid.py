@@ -121,9 +121,9 @@ class Covid:
 
         # driver_name = 'com.mysql.jdbc.Driver' # Old driver
 
-        print('Read from database ...')
+        # print('Read from database ...')
         latest_df, is_resume_extract, latest_date = self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
-        print(f'is_resume_extract={is_resume_extract}')
+        # print(f'is_resume_extract={is_resume_extract}')
         if is_resume_extract:
             if latest_date >= end_date:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
@@ -152,14 +152,14 @@ class Covid:
         ### Update latest date
         #########
         latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
-        print('Done.')
+        # print('Done.')
 
         #######################################
         # Step 3 Transform data
         #######################################
 
-        print('Extract remain info from death_us_df ...', end=' ')
-        death_us_df = death_us_df.cache()
+        # print('Extract remain info from death_us_df ...', end=' ')
+        # death_us_df = death_us_df.cache()
         if not is_resume_extract:
             dim_df = death_us_df.select(
                 death_us_df['UID'], death_us_df['iso2'], death_us_df['iso3'],
@@ -210,11 +210,11 @@ class Covid:
 
         print(f'Write to table {RAW_TABLE_NAME} ...')
         self.GU.write_to_db(df, RAW_TABLE_NAME, logger)
+        print('Done extract_us')
 
     def extract_global(self):
         logger = self.logger
         RAW_TABLE_NAME = 'covid19_global_raw'
-
         is_resume_extract = False
         date_col = 4  # the index of date column in the df
 
@@ -242,7 +242,7 @@ class Covid:
         #######################################
         # Step 2 Read from database to determine the last written data point
         #######################################
-        print('Read from database ...')
+        # print('Read from database ...')
         latest_df, is_resume_extract, latest_date = self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
         latest_df = latest_df.cache()
         latest_df.count()
@@ -270,7 +270,7 @@ class Covid:
         #########
         latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
 
-        print('Done.')
+        # print('Done.')
         #######################################
         # Step 3 Transform data
         #######################################
@@ -293,8 +293,6 @@ class Covid:
             .withColumnRenamed('Country/Region', 'Country_Region') \
             .withColumnRenamed('Long', 'Long_')
 
-        # if __debug__:
-        #     df.show()
         # filter null
         before = df.count()
         df = df.where(df['Lat'].isNotNull())
@@ -309,7 +307,7 @@ class Covid:
         print(f'Write to table {RAW_TABLE_NAME}...')
         self.GU.write_to_db(df, RAW_TABLE_NAME, logger)
 
-        print('Done.')
+        print('Done extract_global.')
 
     """
     Dependencies:
@@ -848,7 +846,7 @@ class Covid:
         df = df.select(df['dateid'], df['date'], df['year'], df['month'],
                        df['month_name'], df['us_confirmed'], df['us_deaths'],
                        df['global_confirmed'], df['global_deaths'])
-        df.show()
+        # df.show()
         ####################################
         # Step 3 Write to Database
         ####################################
@@ -863,20 +861,20 @@ class Covid:
 # Self test
 #GU = GlobalUtil.instance()
 
-spark = SparkSession \
-    .builder \
-    .appName("sb-miniproject6") \
-    .config("spark.some.config.option", "some-value") \
-    .getOrCreate()
-covid = Covid(spark)
-covid.extract_us()
-covid.transform_raw_to_fact_us()
-covid.aggregate_fact_to_monthly_fact_us()
+# spark = SparkSession \
+#     .builder \
+#     .appName("sb-miniproject6") \
+#     .config("spark.some.config.option", "some-value") \
+#     .getOrCreate()
+# covid = Covid(spark)
+# covid.extract_us()
+# covid.transform_raw_to_fact_us()
+# covid.aggregate_fact_to_monthly_fact_us()
+# #
+# covid.transform_raw_to_dim_country()
+# covid.extract_global()
+# covid.transform_raw_to_fact_global()
+# covid.aggregate_fact_to_monthly_fact_global()
 #
-covid.transform_raw_to_dim_country()
-covid.extract_global()
-covid.transform_raw_to_fact_global()
-covid.aggregate_fact_to_monthly_fact_global()
-
-covid.aggregate_fact_to_sum_fact()
-covid.aggregate_fact_to_sum_monthly_fact()
+# covid.aggregate_fact_to_sum_fact()
+# covid.aggregate_fact_to_sum_monthly_fact()

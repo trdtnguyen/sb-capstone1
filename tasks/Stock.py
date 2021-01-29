@@ -680,17 +680,17 @@ class Stock:
 
 
 
-spark = SparkSession \
-    .builder \
-    .appName("sb-miniproject6") \
-    .config("spark.some.config.option", "some-value") \
-    .getOrCreate()
-# Enable Arrow-based columnar data transfers
-spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
-
-stock = Stock(spark)
-stock.extract_major_stock_indexes()
-stock.aggregate_fact_to_monthly_fact_stock_index()
+# spark = SparkSession \
+#     .builder \
+#     .appName("sb-miniproject6") \
+#     .config("spark.some.config.option", "some-value") \
+#     .getOrCreate()
+# # Enable Arrow-based columnar data transfers
+# spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+#
+# stock = Stock(spark)
+# stock.extract_major_stock_indexes()
+# stock.aggregate_fact_to_monthly_fact_stock_index()
 
 # stock.extract_sp500_tickers()
 # stock.extract_batch_stock()

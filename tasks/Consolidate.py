@@ -194,14 +194,14 @@ class Consolidation:
 
 
 # self test
-spark = SparkSession \
-    .builder \
-    .appName("sb-miniproject6") \
-    .config("spark.some.config.option", "some-value") \
-    .getOrCreate()
-# Enable Arrow-based columnar data transfers
-spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
-
-consolidate = Consolidation(spark)
-consolidate.consolidate_covid_stock()
-consolidate.aggregate_covid_stock_monthly_fact()
+# spark = SparkSession \
+#     .builder \
+#     .appName("sb-miniproject6") \
+#     .config("spark.some.config.option", "some-value") \
+#     .getOrCreate()
+# # Enable Arrow-based columnar data transfers
+# spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
+#
+# consolidate = Consolidation(spark)
+# consolidate.consolidate_covid_stock()
+# consolidate.aggregate_covid_stock_monthly_fact()
