@@ -110,6 +110,10 @@ CREATE TABLE IF NOT EXISTS covid19_us_fact (
     date datetime NOT NULL,
     confirmed int NOT NULL,
     deaths int NOT NULL,
+    confirmed_inc int,
+    deaths_inc int,
+    confirmed_inc_pct DECIMAL(18, 5),
+    deaths_inc_pct DECIMAL(18, 5),
     
     PRIMARY KEY(dateid, UID),
     FOREIGN KEY(UID) REFERENCES covid19_us_dim(UID)
@@ -124,6 +128,10 @@ CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
     month_name VARCHAR(32),
     confirmed int NOT NULL,
     deaths int NOT NULL,
+    confirmed_inc int,
+    deaths_inc int,
+    confirmed_inc_pct DECIMAL(18, 5),
+    deaths_inc_pct DECIMAL(18, 5),
     
     PRIMARY KEY(dateid, UID),
     FOREIGN KEY(UID) REFERENCES covid19_us_dim(UID)
@@ -154,6 +162,10 @@ CREATE TABLE IF NOT EXISTS covid19_global_fact(
     date datetime NOT NULL,
     confirmed int NOT NULL,
     deaths int NOT NULL,
+    confirmed_inc int,
+    deaths_inc int,
+    confirmed_inc_pct DECIMAL(18, 5),
+    deaths_inc_pct DECIMAL(18, 5),
     
     PRIMARY KEY(dateid, country_code),
     FOREIGN KEY (country_code) REFERENCES country_dim(code)
@@ -168,6 +180,10 @@ CREATE TABLE IF NOT EXISTS covid19_global_monthly_fact(
     month_name VARCHAR(32),
     confirmed int NOT NULL,
     deaths int NOT NULL,
+    confirmed_inc int,
+    deaths_inc int,
+    confirmed_inc_pct DECIMAL(18, 5),
+    deaths_inc_pct DECIMAL(18, 5),
     
     PRIMARY KEY(dateid, country_code),
     FOREIGN KEY (country_code) REFERENCES country_dim(code)
@@ -179,8 +195,16 @@ CREATE TABLE IF NOT EXISTS covid19_sum_fact (
 
     us_confirmed int NOT NULL,
     us_deaths int NOT NULL,
+    us_confirmed_inc int NOT NULL,
+    us_deaths_inc int NOT NULL,
+    us_confirmed_inc_pct DECIMAL NOT NULL,
+    us_deaths_inc_pct DECIMAL NOT NULL,
     global_confirmed int NOT NULL,
     global_deaths int NOT NULL,
+    global_confirmed_inc int,
+    global_deaths_inc int,
+    global_confirmed_inc_pct DECIMAL(18, 5),
+    global_deaths_inc_pct DECIMAL(18, 5),
 
     PRIMARY KEY(dateid)
 );
@@ -192,8 +216,16 @@ CREATE TABLE IF NOT EXISTS covid19_sum_monthly_fact (
     month_name VARCHAR(32),
     us_confirmed int NOT NULL,
     us_deaths int NOT NULL,
+    us_confirmed_inc int NOT NULL,
+    us_deaths_inc int NOT NULL,
+    us_confirmed_inc_pct DECIMAL NOT NULL,
+    us_deaths_inc_pct DECIMAL NOT NULL,
     global_confirmed int NOT NULL,
     global_deaths int NOT NULL,
+    global_confirmed_inc int NOT NULL,
+    global_deaths_inc int NOT NULL,
+    global_confirmed_inc_pct DECIMAL(18, 5),
+    global_deaths_inc_pct DECIMAL(18, 5),
 
     PRIMARY KEY(dateid)
 );

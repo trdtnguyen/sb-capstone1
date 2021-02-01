@@ -14,7 +14,8 @@ from tasks.GlobalUtil import GlobalUtil
 from pyspark.sql import SparkSession
 from pyspark import SparkFiles  # for reading csv file from https
 from pyspark.sql.types import ArrayType, StructField, StructType, StringType, IntegerType, FloatType, DateType
-from pyspark.sql.functions import array, col, explode, struct, lit, udf, when, expr
+from pyspark.sql.functions import array, col, explode, struct, lit, udf, when, expr, lag
+from pyspark.sql.window import Window
 
 from db.DB import DB
 import configparser
@@ -341,18 +342,23 @@ class Covid:
 
         fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
 
+        ## Note: We need to perfrom "Upsert" operation (Update or Insert) to ensure the last month data is correct
+        ### Currently, we don't implement Resuming transform since we still not figure out how to Upsert
+        ### So all monthly data is rewrite everytime we run the ETL pipeline
         if is_resume_extract:
             if latest_date >= end_date:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
                 ### Resuming transform
-                before = fact_df.count()
-                fact_df = fact_df.filter(
-                    fact_df['date'] > latest_date
-                )
-                after = fact_df.count()
-                print(f'Skipped {(before - after)} rows')
+                ### TODO: impelement Upsert in order to use this
+                pass
+                # before = fact_df.count()
+                # fact_df = fact_df.filter(
+                #     fact_df['date'] > latest_date
+                # )
+                # after = fact_df.count()
+                # print(f'Skipped {(before - after)} rows')
 
         #########
         ### Step 2 Update latest date
@@ -391,7 +397,7 @@ class Covid:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger, 'overwrite')
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
@@ -456,16 +462,24 @@ class Covid:
         dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
         df = df.withColumn('dateid', dateid_udf(raw_df['date']))
 
+        # Aggregate columns that show differences between curernt day and the previous day
+        df = self.GU.add_prev_diff(df,
+                                   'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
+                                   'UID', 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'deaths', 'deaths_inc', 'deaths_inc_pct',
+                                   'UID', 'date')
         #if __debug__:
-        #    df.show()
+        df.show()
 
         ####################################
         # Step 4 Write to Database
         ####################################
-        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
-        self.GU.write_latest_data(latest_df, logger)
         print(f'Write to table {FACT_TABLE_NAME}...')
         self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+
 
         print('Done.')
 
@@ -561,13 +575,15 @@ class Covid:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
-                ### Resuming transform
-                before = fact_df.count()
-                fact_df = fact_df.filter(
-                    fact_df['date'] > latest_date
-                )
-                after = fact_df.count()
-                print(f'Skipped {(before - after)} rows')
+                ### TODO: implement Upsert in order to use this
+                pass
+                # ### Resuming transform
+                # before = fact_df.count()
+                # fact_df = fact_df.filter(
+                #     fact_df['date'] > latest_date
+                # )
+                # after = fact_df.count()
+                # print(f'Skipped {(before - after)} rows')
 
         #########
         ### Step 2 Update latest date
@@ -601,7 +617,8 @@ class Covid:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        # self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger, 'overwrite')
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
@@ -804,11 +821,16 @@ class Covid:
             end_date = end_date_arr[0][1]
 
         fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
+        ## Note: We need to perfrom "Upsert" operation (Update or Insert) to ensure the last month data is correct
+        ### Currently, we don't implement Resuming transform since we still not figure out how to Upsert
+        ### So all monthly data is rewrite everytime we run the ETL pipeline
         if is_resume_extract:
             if latest_date >= end_date:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
+                ### TODO: impelement Upsert in order to use this
+                pass
                 ### Resuming transform
                 before = fact_df.count()
                 fact_df = fact_df.filter(
@@ -851,7 +873,8 @@ class Covid:
         # Step 3 Write to Database
         ####################################
         print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        # self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger, 'overwrite')
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')

@@ -7,7 +7,9 @@ __author__ = 'Dat Nguyen'
 import os
 from os import environ as env
 from datetime import datetime
-from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
+from pyspark.sql.functions import array, col, explode, struct, lit, udf, when, lag
+from pyspark.sql import Window
+from pyspark.sql.types import FloatType
 import configparser
 
 
@@ -141,14 +143,14 @@ class GlobalUtil(object):
         return df
 
     @classmethod
-    def write_to_db(cls, df, table_name, logger):
+    def write_to_db(cls, df, table_name, logger, write_mode ='append'):
         try:
             df.write.format('jdbc').options(
                 url=cls.JDBC_MYSQL_URL,
                 driver=cls.DRIVER_NAME,
                 dbtable=table_name,
                 user=cls.CONFIG['DATABASE']['MYSQL_USER'],
-                password=cls.CONFIG['DATABASE']['MYSQL_PASSWORD']).mode('append').save()
+                password=cls.CONFIG['DATABASE']['MYSQL_PASSWORD']).mode(write_mode).save()
         except ValueError:
             logger.error(f'Error Query when extracting data for {table_name} table')
 
@@ -186,3 +188,23 @@ class GlobalUtil(object):
         rdd = df.select(df[col_name]).rdd
         arr = rdd.flatMap(lambda row: row).collect()
         return arr
+
+    """
+    Add columns col_name_inc and col_name_inc_pct that is the differences amount and
+    different percentage between current row and a previous row
+    """
+    @classmethod
+    def add_prev_diff(cls, df,
+                      col_name: str, col_name_inc: str, col_name_inc_pct: str,
+                      partition_by_col: str, order_by_col: str):
+        df = df.withColumn('tem_prev', lag(col(col_name))
+                           .over(Window.partitionBy(partition_by_col).orderBy(order_by_col)))
+        # Fill null with 0
+        df = df.fillna({'tem_prev':'0'})
+
+        df = df.withColumn(col_name_inc, col(col_name) - col('tem_prev'))\
+            .withColumn(col_name_inc_pct, (col(col_name) - col('tem_prev')) * 100.0 / col('tem_prev'))
+        df = df.fillna({col_name_inc_pct: '0'})
+
+        df = df.drop(col('tem_prev'))
+        return df
