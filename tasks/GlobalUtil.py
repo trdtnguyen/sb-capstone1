@@ -197,8 +197,12 @@ class GlobalUtil(object):
     def add_prev_diff(cls, df,
                       col_name: str, col_name_inc: str, col_name_inc_pct: str,
                       partition_by_col: str, order_by_col: str):
-        df = df.withColumn('tem_prev', lag(col(col_name))
-                           .over(Window.partitionBy(partition_by_col).orderBy(order_by_col)))
+        if partition_by_col is not None:
+            df = df.withColumn('tem_prev', lag(col(col_name))
+                               .over(Window.partitionBy(partition_by_col).orderBy(order_by_col)))
+        else:
+            df = df.withColumn('tem_prev', lag(col(col_name))
+                               .over(Window.orderBy(order_by_col)))
         # Fill null with 0
         df = df.fillna({'tem_prev':'0'})
 

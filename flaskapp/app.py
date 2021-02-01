@@ -121,7 +121,7 @@ def query_covid_stock_chart():
                        status=500)
 
 @app.route('/query_covid_new_cases_stock_chart', methods='GET')
-def query_covid_stock_chart():
+def query_covid_new_cases_stock_chart():
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     try:

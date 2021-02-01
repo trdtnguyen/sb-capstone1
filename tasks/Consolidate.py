@@ -88,8 +88,11 @@ class Consolidation:
         df2 = self.GU.read_from_db(self.spark, COVID_SUM_FACT_TABLE_NAME)
         df2.createOrReplaceTempView(COVID_SUM_FACT_TABLE_NAME)
 
-        s = "SELECT DISTINCT c.dateid, c.date, c.us_confirmed, c.us_deaths, " + \
-            "c.global_confirmed, c.global_deaths,  " + \
+        s = "SELECT DISTINCT c.dateid, c.date, " + \
+            "c.us_confirmed, c.us_deaths, c.us_confirmed_inc, c.us_deaths_inc, " + \
+            "c.us_confirmed_inc_pct, c.us_deaths_inc_pct, " + \
+            "c.global_confirmed, c.global_deaths, c.global_confirmed_inc, c.global_deaths_inc,  " + \
+            "c.global_confirmed_inc_pct, c.global_deaths_inc_pct, " + \
             f"{COL_NAMES[0]}, {COL_NAMES[1]}, {COL_NAMES[2]} " + \
             f"FROM {COVID_SUM_FACT_TABLE_NAME} as c LEFT JOIN" + \
             f" {STOCK_INDEX_FACT_TABLE_NAME} as s ON c.dateid = s.dateid " +\
@@ -175,13 +178,35 @@ class Consolidation:
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('month_name', month_name_udf(df['date']))
 
-        # df.show()
+        # Aggregate columns that show differences between curernt day and the previous day
+        df = self.GU.add_prev_diff(df,
+                                   'us_confirmed', 'us_confirmed_inc', 'us_confirmed_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'us_deaths', 'us_deaths_inc', 'us_deaths_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'global_confirmed', 'global_confirmed_inc', 'global_confirmed_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'global_deaths', 'global_deaths_inc', 'global_deaths_inc_pct',
+                                   None, 'date')
         # Reorder the columns to match the schema
         df = df.select(df['dateid'], df['date'], df['year'], df['month'], df['month_name'],
-                       df['us_confirmed'], df['us_deaths'], df['global_confirmed'], df['global_deaths'],
+                       df['us_confirmed'], df['us_deaths'],
+                       df['us_confirmed_inc'], df['us_deaths_inc'],
+                       df['us_confirmed_inc_pct'], df['us_deaths_inc_pct'],
+                       df['global_confirmed'], df['global_deaths'],
+                       df['global_confirmed_inc'], df['global_deaths_inc'],
+                       df['global_confirmed_inc_pct'], df['global_deaths_inc_pct'],
                        df['sp500_score'], df['nasdaq100_score'], df['dowjones_score']
                        )
-        # df.show()
+        # Reorder the columns to match the schema
+        # df = df.select(df['dateid'], df['date'], df['year'], df['month'], df['month_name'],
+        #                df['us_confirmed'], df['us_deaths'], df['global_confirmed'], df['global_deaths'],
+        #                df['sp500_score'], df['nasdaq100_score'], df['dowjones_score']
+        #                )
+        df.show()
         ####################################
         # Step 4 Write to Database
         ####################################

@@ -38,7 +38,7 @@ spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 etl_covid = True
 etl_stock = True
 etl_bol = False
-etl_consolid = False
+etl_consolid = True
 
 #### Covid
 if etl_covid:
@@ -51,7 +51,7 @@ if etl_covid:
     covid.extract_global()
     covid.transform_raw_to_fact_global()
     covid.aggregate_fact_to_monthly_fact_global()
-    #
+    # #
     covid.aggregate_fact_to_sum_fact()
     covid.aggregate_fact_to_sum_monthly_fact()
 

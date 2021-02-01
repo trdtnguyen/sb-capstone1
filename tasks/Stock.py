@@ -470,6 +470,8 @@ class Stock:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
+                ### TODO: impelement Upsert in order to use this
+                pass
                 ### Resuming transform
                 before = fact_df.count()
                 fact_df = fact_df.filter(
@@ -511,7 +513,8 @@ class Stock:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        # self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger, 'overwrite')
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
@@ -620,6 +623,8 @@ class Stock:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
+                ### TODO: implement Upsert in order to use this
+                pass
                 ### Resuming transform
                 before = fact_df.count()
                 fact_df = fact_df.filter(
@@ -663,7 +668,8 @@ class Stock:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        # self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger, 'overwrite')
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')

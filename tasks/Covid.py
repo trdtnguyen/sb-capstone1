@@ -388,9 +388,16 @@ class Covid:
             .withColumn('month_name', month_name_udf(df['date']))
 
         # Reorder the columns to match the schema
-        df = df.select(df['dateid'], df['UID'], df['date'], df['year'],
-                       df['month'], df['month_name'], df['confirmed'], df['deaths'])
+        # df = df.select(df['dateid'], df['UID'], df['date'], df['year'],
+        #                df['month'], df['month_name'], df['confirmed'], df['deaths'])
 
+        # Aggregate columns that show differences between curernt day and the previous day
+        df = self.GU.add_prev_diff(df,
+                                   'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
+                                   'UID', 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'deaths', 'deaths_inc', 'deaths_inc_pct',
+                                   'UID', 'date')
         # df.show()
 
         ####################################
@@ -470,7 +477,7 @@ class Covid:
                                    'deaths', 'deaths_inc', 'deaths_inc_pct',
                                    'UID', 'date')
         #if __debug__:
-        df.show()
+        # df.show()
 
         ####################################
         # Step 4 Write to Database
@@ -607,11 +614,19 @@ class Covid:
         df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('month_name', month_name_udf(df['date']))
+
         # Reorder the columns to match the schema
         df = df.select(df['dateid'], df['country_code'], df['date'], df['year'],
                        df['month'], df['month_name'], df['confirmed'], df['deaths'])
 
         #df.show()
+        # Aggregate columns that show differences between curernt day and the previous day
+        df = self.GU.add_prev_diff(df,
+                                   'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
+                                   'country_code', 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'deaths', 'deaths_inc', 'deaths_inc_pct',
+                                   'country_code', 'date')
 
         ####################################
         # Step 4 Write to Database
@@ -709,6 +724,14 @@ class Covid:
             f"WHERE {temp_table_name}.Country_Region = {DIM_TABLE_NAME}.Name " +\
             "ORDER BY dateid, country_code, date"
         df = self.spark.sql(s)
+
+        # Aggregate columns that show differences between curernt day and the previous day
+        df = self.GU.add_prev_diff(df,
+                                   'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
+                                   'country_code', 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'deaths', 'deaths_inc', 'deaths_inc_pct',
+                                   'country_code', 'date')
         #df.show(n=50)
         ####################################
         # Step 4 Write to Database
@@ -757,13 +780,15 @@ class Covid:
 
         latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
         #########
-        ### Step 2 Read fact tables
+        ### Step 2 Read fact tables and create temp view
         #########
         us_fact_df = self.GU.read_from_db(self.spark, US_FACT_TABLE_NAME)
         us_fact_df.createOrReplaceTempView(US_FACT_TABLE_NAME)
         global_fact_df = self.GU.read_from_db(self.spark, GLOBAL_FACT_TABLE_NAME)
         global_fact_df.createOrReplaceTempView(GLOBAL_FACT_TABLE_NAME)
-
+        #########
+        ### Step 3 Aggregate each table to compute sum of cases
+        #########
         s = "SELECT dateid, date, " + \
             "SUM(confirmed) as us_confirmed, SUM(deaths) as us_deaths " + \
             f" FROM  {US_FACT_TABLE_NAME}" + \
@@ -782,15 +807,41 @@ class Covid:
         # tem_global_df.show()
         tem_global_df.createOrReplaceTempView('tem2')
 
+        #########
+        ### Step 4 Join temp view
+        #########
         s = "SELECT u.dateid, u.date, " + \
             "us_confirmed, us_deaths, global_confirmed, global_deaths " + \
             f" FROM tem1 as u, tem2 as g" + \
             f" WHERE u.dateid=  g.dateid" + \
             f" ORDER BY u.dateid, u.date"
         df = self.spark.sql(s)
+
+        # Aggregate columns that show differences between curernt day and the previous day
+        df = self.GU.add_prev_diff(df,
+                                   'us_confirmed', 'us_confirmed_inc', 'us_confirmed_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'us_deaths', 'us_deaths_inc', 'us_deaths_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'global_confirmed', 'global_confirmed_inc', 'global_confirmed_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'global_deaths', 'global_deaths_inc', 'global_deaths_inc_pct',
+                                   None, 'date')
+
+        df = df.select(df['dateid'], df['date'],
+                       df['us_confirmed'], df['us_deaths'],
+                       df['us_confirmed_inc'], df['us_deaths_inc'],
+                       df['us_confirmed_inc_pct'], df['us_deaths_inc_pct'],
+                       df['global_confirmed'], df['global_deaths'],
+                       df['global_confirmed_inc'], df['global_deaths_inc'],
+                       df['global_confirmed_inc_pct'], df['global_deaths_inc_pct']
+                       )
         # df.show()
         ####################################
-        # Step 4 Write to Database
+        # Step 5 Write to Database
         ####################################
         print(f'Write to table {FACT_TABLE_NAME}...')
         self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
@@ -864,10 +915,30 @@ class Covid:
         df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('month_name', month_name_udf(df['date']))
+
+        # Aggregate columns that show differences between curernt day and the previous day
+        df = self.GU.add_prev_diff(df,
+                                   'us_confirmed', 'us_confirmed_inc', 'us_confirmed_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'us_deaths', 'us_deaths_inc', 'us_deaths_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'global_confirmed', 'global_confirmed_inc', 'global_confirmed_inc_pct',
+                                   None, 'date')
+        df = self.GU.add_prev_diff(df,
+                                   'global_deaths', 'global_deaths_inc', 'global_deaths_inc_pct',
+                                   None, 'date')
         # Reorder the columns to match the schema
-        df = df.select(df['dateid'], df['date'], df['year'], df['month'],
-                       df['month_name'], df['us_confirmed'], df['us_deaths'],
-                       df['global_confirmed'], df['global_deaths'])
+        df = df.select(df['dateid'], df['date'], df['year'], df['month'], df['month_name'],
+                       df['us_confirmed'], df['us_deaths'],
+                       df['us_confirmed_inc'], df['us_deaths_inc'],
+                       df['us_confirmed_inc_pct'], df['us_deaths_inc_pct'],
+                       df['global_confirmed'], df['global_deaths'],
+                       df['global_confirmed_inc'], df['global_deaths_inc'],
+                       df['global_confirmed_inc_pct'], df['global_deaths_inc_pct']
+                       )
+
         # df.show()
         ####################################
         # Step 3 Write to Database
