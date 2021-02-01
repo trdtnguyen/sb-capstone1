@@ -44,12 +44,10 @@
           //var pathname = location.pathname;
 
           var href = location.href
-          /*check app.py for the route names*/
-          var url1 = href + "query_covid_stock_chart"
-          var url2 = href + "query_covid_new_cases_stock_chart"
+          var url = href + "query_covid_stock_chart"
 
-          url1 = url.concat('?', 'start_date=', [year1, month1, day1].join('-'))
-          url1 = url.concat('&', 'end_date=', [year2, month2, day2].join('-'))
+          url = url.concat('?', 'start_date=', [year1, month1, day1].join('-'))
+          url = url.concat('&', 'end_date=', [year2, month2, day2].join('-'))
           $.get(url, function( data ) {
               $('#content').html(data);
           });

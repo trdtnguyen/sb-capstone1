@@ -7,12 +7,8 @@ __author__ = 'Dat Nguyen'
 
 from db.DB import DB
 import configparser
-from urllib.request import urlretrieve
 import pandas as pd
-import requests
-from bs4 import BeautifulSoup
 
-from yahoo_finance import Share
 
 class Main:
     def __init__(self):
