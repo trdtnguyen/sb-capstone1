@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>jQuery UI Datepicker - Select a Date Range</title>
+  <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script>
+  /*Set default input for dates when document is ready*/
+  $( document ).ready(function() {
+    //loadConfigFile();
+    console.log( "ready!" );
+    var now = new Date();
+    var today = now.getFullYear() + '-' + ('0' + (now.getMonth() + 1)).slice(-2) + '-' + ('0' + now.getDate()).slice(-2);
+    $('#date-input2').val(today);
+
+
+    submit_request();
+  });
+
+  $(function() {
+      $('#submit').on('click', function(){
+          submit_request();
+      });
+  });
+
+  function submit_request() {
+          /*Make the query dates */
+          var date1 = new Date($('#date-input1').val());
+          day1 = date1.getDate();
+          month1 = date1.getMonth() + 1;
+          year1 = date1.getFullYear();
+
+          var date2 = new Date($('#date-input2').val());
+          day2 = date2.getDate();
+          month2 = date2.getMonth() + 1;
+          year2 = date2.getFullYear();
+
+          /*Make the request urls*/
+          //var host = location.hostname;
+          //var port = location.port;
+          //var pathname = location.pathname;
+
+          var href = location.href
+          /*check app.py for the route names*/
+          var url1 = href + "query_covid_stock_chart"
+          var url2 = href + "query_covid_new_cases_stock_chart"
+
+          url1 = url.concat('?', 'start_date=', [year1, month1, day1].join('-'))
+          url1 = url.concat('&', 'end_date=', [year2, month2, day2].join('-'))
+          $.get(url, function( data ) {
+              $('#content').html(data);
+          });
+  }
+
+  </script>
+</head>
+<body>
+
+<input type="date" id="date-input1" value="2020-01-02" required />
+<input type="date" id="date-input2" required />
+<button id="submit">Submit</button>
+<div id=content>
+</div>
+<div id=content2>
+</div>
+
+</body>
+</html>

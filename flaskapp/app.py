@@ -74,9 +74,9 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/query', methods=['GET'])
+@app.route('/query_covid_stock_chart', methods=['GET'])
 # @cross_origin(origin='192.168.0.2',headers=['Content- Type','Authorization'])
-def main():
+def query_covid_stock_chart():
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
     try:
@@ -106,7 +106,7 @@ def main():
         nasdaq100_arr = result_df.select(col('nasdaq100_score')).rdd.flatMap(lambda x: x).collect()
         dowjones_arr = result_df.select(col('dowjones_score')).rdd.flatMap(lambda x: x).collect()
 
-        return render_template('chart.html', template_labels=date_arr,
+        return render_template('covid_stock_chart.html', template_labels=date_arr,
                                arg_us_confirmed_arr=us_confirmed_arr,
                                arg_us_death_arr=us_death_arr,
                                arg_global_confirmed_arr=global_confirmed_arr,
@@ -119,6 +119,55 @@ def main():
         print(e)
         return jsonify(message="Incorrect data format, should be YYYY-MM-DD",
                        status=500)
+
+@app.route('/query_covid_new_cases_stock_chart', methods='GET')
+def query_covid_stock_chart():
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, COVID_STOCK_FACT_TABLE_NAME)
+        # validation input arguments
+        if latest_date < end_date:
+            end_date = latest_date
+
+        result_df = covid_stock_fact_df \
+            .filter((col('date') >= start_date) & (col('date') <= end_date)
+                    )
+        # result_df.show()
+        # result_json = result_df.toJSON().collect()
+        # return jsonify(result_json), 200
+
+        date_arr = result_df.select(col('date')).rdd.flatMap(lambda x: x).collect()
+        #convert from date to str
+        date_arr = [date.strftime('%Y-%m-%d') for date in date_arr]
+        us_confirmed_arr = result_df.select(col('us_confirmed')).rdd.flatMap(lambda x: x).collect()
+        us_death_arr = result_df.select(col('us_deaths')).rdd.flatMap(lambda x: x).collect()
+        global_confirmed_arr = result_df.select(col('global_confirmed')).rdd.flatMap(lambda x: x).collect()
+        global_death_arr = result_df.select(col('global_deaths')).rdd.flatMap(lambda x: x).collect()
+        sp500_arr = result_df.select(col('sp500_score')).rdd.flatMap(lambda x: x).collect()
+        nasdaq100_arr = result_df.select(col('nasdaq100_score')).rdd.flatMap(lambda x: x).collect()
+        dowjones_arr = result_df.select(col('dowjones_score')).rdd.flatMap(lambda x: x).collect()
+
+        return render_template('covid_stock_chart.html', template_labels=date_arr,
+                               arg_us_confirmed_arr=us_confirmed_arr,
+                               arg_us_death_arr=us_death_arr,
+                               arg_global_confirmed_arr=global_confirmed_arr,
+                               arg_global_death_arr=global_death_arr,
+                               arg_sp500_arr=sp500_arr,
+                               arg_nasdaq100_arr=nasdaq100_arr,
+                               arg_dowjones_arr=dowjones_arr,
+                               )
+    except ValueError as e:
+        print(e)
+        return jsonify(message="Incorrect data format, should be YYYY-MM-DD",
+                       status=500)
+
+@app.route('/get_file/<string:filename>', methods=['GET'])
+def get_file(filename):
+    return send_from_directory(app.root_path, filename)
 
 
 
