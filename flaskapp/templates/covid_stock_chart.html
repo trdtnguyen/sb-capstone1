@@ -14,15 +14,36 @@
 <div class="container">
     <div class="row">
         <div class="col">
-            <canvas id="covid_stock_chart"></canvas>
+            <canvas id="covid_stock_chart" width="50%" height="50%"></canvas>
+        </div>
+        <div class="col">
+            <canvas id="covid_stock_chart2" width="50%" height="50%"></canvas>
         </div>
     </div>
+    <div class="row">
+        <div class="col">
+            <table align = "center"
+                id="table" border="1">
+             </table>
+        </div>
+
+    </div>
+
 </div>
 
 <script>
+  $( document ).ready(function() {
+    // arg_topk_us_json is a json return from query_covid_stock_chart
+    //constructTable({{arg_topk_us_json}}, '#table')
+
+  });
+
     var cv = document.getElementById('covid_stock_chart');
     var ctx = cv.getContext('2d');
-    
+
+    var cv2 = document.getElementById('covid_stock_chart2');
+    var ctx2 = cv2.getContext('2d');
+
     var borderW = 2;
     var chart = new Chart(ctx, {
         type: 'line',
@@ -89,6 +110,7 @@
             ]
         },
         options: {
+
             title: {
                 display: true,
                 text: 'Covid-19 confirmed cases/deaths and Stock indexes'
@@ -134,22 +156,106 @@
             }
         },
     });
-    cv.onclick = function(evt) {
-        var activePoints = chart.getElementsAtEventForMode(evt, 'point', chart.options);
-        var firstPoint = activePoints[0];
 
-        // if activePoints array len > 0, build up the link, and go to the drilldown page
-        // this is to cover the case when the legend is clicked
+    var chart2 = new Chart(ctx2, {
+        type: 'bar',
+        data: {
+            labels: {{ template_labels | tojson }},
+            datasets: [
+            {
+                label: "New confirmed",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_inc_arr }},
+                backgroundColor: "#5c5c5c",
+                borderColor: "#5c5c5c",
+                fill: false,
+            },
+            {
+                label: "New deaths",
+                yAxisID: 'A',
+                data: {{ arg_us_death_inc_arr }},
+                backgroundColor: "#f52c2c",
+                borderColor: "#f52c2c",
+                borderWidth: 2,
+                fill: false,
+            },
+            {
+                label: "S&P500",
+                yAxisID: 'B',
+                data: {{ arg_sp500_arr }},
+                backgroundColor: "#FABDB4",
+                borderColor: "#FABDB4",
+                fill: false,
+                type: 'line',
+            },
+            {
+                label: "NASDAQ-100",
+                yAxisID: 'B',
+                data: {{ arg_nasdaq100_arr }},
+                backgroundColor: "#FA7A66",
+                borderColor: "#FA7A66",
+                fill: false,
+                type: 'line',
+            },
+            {
+                label: "DOW JONES",
+                yAxisID: 'B',
+                data: {{ arg_dowjones_arr }},
+                backgroundColor: "#8C1806",
+                borderColor: "#8C1806",
+                fill: false,
+                type: 'line',
+            },
+            ]
+        },
+        options: {
+            title: {
+                display: true,
+                text: 'Covid-19 NEW cases/deaths in the US and Stock indexes'
+            },
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        unit: 'month'
+                    }
+                }],
+               yAxes: [{
+                  id: 'A',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'New Cases/Deaths'
+                  },
+                  type: 'linear',
+                  position: 'left',
+                  label: 'Label A',
+                }, {
+                  id: 'B',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Index scores'
+                  },
+                  type: 'linear',
+                  position: 'right',
+                  label: 'Label B',
+               }]
+            },
+            legend: {
+                onHover: function(e) {
+                    e.target.style.cursor = 'pointer';
+                }
+            },
+            hover: {
+                onHover: function(e) {
+                    var point = this.getElementAtEvent(e);
+                    if (point.length) e.target.style.cursor = 'pointer';
+                    else e.target.style.cursor = 'default';
+                }
+            }
+        },
+    });
 
-        if (activePoints.length > 0) {
-            var label = chart.data.labels[firstPoint._index];
-            // in case you need to get also the value
-            // var value = chart.data.datasets[firstPoint._datasetIndex].data[firstPoint._index];
 
-            var url = "/" + label;
-            window.location = url
-        }
-    };
 </script>
 
 {% endblock %}

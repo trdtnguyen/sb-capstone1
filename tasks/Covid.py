@@ -369,13 +369,13 @@ class Covid:
         ### Step 3 Transform
         #########
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
-        s = "SELECT UID, YEAR(date), MONTH(date), MAX(confirmed) , MAX(deaths)" + \
+        s = "SELECT Province_State, YEAR(date), MONTH(date), MAX(confirmed) , MAX(deaths)" + \
             f"FROM {FACT_TABLE_NAME} " + \
-            "GROUP BY UID, YEAR(date), MONTH(date)"
+            "GROUP BY Province_State, YEAR(date), MONTH(date)"
 
         df = self.spark.sql(s)
         # Change columns name by index to match the schema
-        df = df.toDF('UID', 'year', 'month', 'confirmed', 'deaths')
+        df = df.toDF('Province_State', 'year', 'month', 'confirmed', 'deaths')
 
         # Add column 'dateid' and 'date'
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
@@ -394,10 +394,10 @@ class Covid:
         # Aggregate columns that show differences between curernt day and the previous day
         df = self.GU.add_prev_diff(df,
                                    'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
-                                   'UID', 'date')
+                                   'Province_State', 'date')
         df = self.GU.add_prev_diff(df,
                                    'deaths', 'deaths_inc', 'deaths_inc_pct',
-                                   'UID', 'date')
+                                   'Province_State', 'date')
         # df.show()
 
         ####################################
@@ -440,6 +440,7 @@ class Covid:
             end_date = end_date_arr[0][1]
 
         raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
+        raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -462,9 +463,17 @@ class Covid:
         #########
         ### Step 3 Transform
         #########
-        # Filtering specific columns
-        df = raw_df.select(
-            col('UID'), col('date'), col('confirmed'), col('deaths')).distinct()
+        # Filtering specific columns and sum up for state
+        key1 = 'Province_State'
+        key2 = 'date'
+        s = f"SELECT {key1}, {key2}, SUM(confirmed) as confirmed, SUM(deaths) as deaths" + \
+            f" FROM {RAW_TABLE_NAME} " + \
+            f" GROUP BY {key1}, {key2} " +\
+            f" ORDER BY {key1}, {key2}"
+        df = self.spark.sql(s)
+        # Rename
+        df = df.select(
+            col(key1), col(key2), col('confirmed'), col('deaths')).distinct()
         # Add column "dateid" computed from "date"
         dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
         df = df.withColumn('dateid', dateid_udf(raw_df['date']))
@@ -472,10 +481,10 @@ class Covid:
         # Aggregate columns that show differences between curernt day and the previous day
         df = self.GU.add_prev_diff(df,
                                    'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
-                                   'UID', 'date')
+                                   key1, key2)
         df = self.GU.add_prev_diff(df,
                                    'deaths', 'deaths_inc', 'deaths_inc_pct',
-                                   'UID', 'date')
+                                   key1, key2)
         #if __debug__:
         # df.show()
 
@@ -601,13 +610,14 @@ class Covid:
         ### Step 3 Transform
         #########
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
-        s = "SELECT country_code, YEAR(date), MONTH(date), MAX(confirmed) , MAX(deaths) " + \
+        key = 'Country_Region'
+        s = f"SELECT {key}, YEAR(date), MONTH(date), MAX(confirmed) , MAX(deaths) " + \
             f"FROM {FACT_TABLE_NAME} " + \
-            "GROUP BY country_code, YEAR(date), MONTH(date) " + \
-            "ORDER BY country_code, YEAR(date), MONTH(date) "
+            f"GROUP BY {key}, YEAR(date), MONTH(date) " + \
+            f"ORDER BY {key}, YEAR(date), MONTH(date) "
         df = self.spark.sql(s)
         # Change columns name by index to match the schema
-        df = df.toDF('country_code', 'year', 'month', 'confirmed', 'deaths')
+        df = df.toDF(key, 'year', 'month', 'confirmed', 'deaths')
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
         first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y, m), IntegerType())
         month_name_udf = udf(lambda d: get_month_name(d), StringType())
@@ -616,17 +626,17 @@ class Covid:
         df = df.withColumn('month_name', month_name_udf(df['date']))
 
         # Reorder the columns to match the schema
-        df = df.select(df['dateid'], df['country_code'], df['date'], df['year'],
+        df = df.select(df['dateid'], df[key], df['date'], df['year'],
                        df['month'], df['month_name'], df['confirmed'], df['deaths'])
 
         #df.show()
         # Aggregate columns that show differences between curernt day and the previous day
         df = self.GU.add_prev_diff(df,
                                    'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
-                                   'country_code', 'date')
+                                   key, 'date')
         df = self.GU.add_prev_diff(df,
                                    'deaths', 'deaths_inc', 'deaths_inc_pct',
-                                   'country_code', 'date')
+                                   key, 'date')
 
         ####################################
         # Step 4 Write to Database
@@ -706,32 +716,35 @@ class Covid:
         #          "GROUP BY Country_Region, date "
         #          "ORDER BY code "
         #          )
-
-        s = "SELECT DISTINCT Country_Region, date, SUM(confirmed), SUM(deaths) " +\
-                 f"FROM  {RAW_TABLE_NAME} " +\
-                 "GROUP BY Country_Region, date " +\
-                 "ORDER BY date, Country_Region"
+        key = 'Country_Region'
+        s = f"SELECT DISTINCT {key}, date, SUM(confirmed) as confirmed, SUM(deaths) as deaths " +\
+                 f" FROM  {RAW_TABLE_NAME} " +\
+                 f"GROUP BY date, {key} " +\
+                 f"ORDER BY date, {key}"
         trans_df = self.spark.sql(s)
-        trans_df = trans_df.toDF('Country_Region', 'date', 'confirmed', 'deaths')
+        trans_df = trans_df.toDF(key, 'date', 'confirmed', 'deaths')
 
+        # add dateid column
         dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
-        trans_df = trans_df.withColumn('dateid', dateid_udf(trans_df['date']))
+        df = trans_df.withColumn('dateid', dateid_udf(trans_df['date']))
+        # TODO: current country_dim table is out-of-date. So we use only the covid19_global_raw
+        # without join with country_dim
 
-        temp_table_name = RAW_TABLE_NAME+"_trans"
-        trans_df.createOrReplaceTempView(temp_table_name)
-        s = "SELECT DISTINCT dateid, code as country_code, date, confirmed, deaths " + \
-            f"FROM  {temp_table_name} ,{DIM_TABLE_NAME} " + \
-            f"WHERE {temp_table_name}.Country_Region = {DIM_TABLE_NAME}.Name " +\
-            "ORDER BY dateid, country_code, date"
-        df = self.spark.sql(s)
+        # temp_table_name = RAW_TABLE_NAME+"_trans"
+        # trans_df.createOrReplaceTempView(temp_table_name)
+        # s = "SELECT DISTINCT dateid, code as country_code, date, confirmed, deaths " + \
+        #     f"FROM  {temp_table_name} ,{DIM_TABLE_NAME} " + \
+        #     f"WHERE {temp_table_name}.Country_Region = {DIM_TABLE_NAME}.Name " +\
+        #     "ORDER BY dateid, country_code, date"
+        # df = self.spark.sql(s)
 
         # Aggregate columns that show differences between curernt day and the previous day
         df = self.GU.add_prev_diff(df,
                                    'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
-                                   'country_code', 'date')
+                                   key, 'date')
         df = self.GU.add_prev_diff(df,
                                    'deaths', 'deaths_inc', 'deaths_inc_pct',
-                                   'country_code', 'date')
+                                   key, 'date')
         #df.show(n=50)
         ####################################
         # Step 4 Write to Database

@@ -11,6 +11,7 @@ from flask_cors import CORS, cross_origin
 from tasks.GlobalUtil import GlobalUtil
 from tasks.Covid import Covid
 from datetime import datetime, timedelta
+import ast # for convert string to dict
 
 ### For flask
 from flask import Flask, render_template, send_from_directory
@@ -35,6 +36,9 @@ covid = Covid(spark)
 # Prefetch database
 COVID_STOCK_FACT_TABLE_NAME = GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
 covid_stock_fact_df = GU.read_from_db(spark, COVID_STOCK_FACT_TABLE_NAME)
+
+COVID_US_FACT_TABLE_NAME = GU.CONFIG['DATABASE']['COVID_US_FACT_TABLE_NAME']
+covid_us_fact_df = GU.read_from_db(spark, COVID_US_FACT_TABLE_NAME)
 print('========================')
 print("API server is ready.")
 # Flask
@@ -82,6 +86,10 @@ def main():
     try:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+
+        # topk_us_json = query_top_cases_us(start_date, end_date, 10)
+
+
         latest_df, is_resume_extract, latest_date = \
             GU.read_latest_data(spark, COVID_STOCK_FACT_TABLE_NAME)
         # validation input arguments
@@ -100,8 +108,12 @@ def main():
         date_arr = [date.strftime('%Y-%m-%d') for date in date_arr]
         us_confirmed_arr = result_df.select(col('us_confirmed')).rdd.flatMap(lambda x: x).collect()
         us_death_arr = result_df.select(col('us_deaths')).rdd.flatMap(lambda x: x).collect()
+        us_confirmed_inc_arr = result_df.select(col('us_confirmed_inc')).rdd.flatMap(lambda x: x).collect()
+        us_death_inc_arr = result_df.select(col('us_deaths_inc')).rdd.flatMap(lambda x: x).collect()
         global_confirmed_arr = result_df.select(col('global_confirmed')).rdd.flatMap(lambda x: x).collect()
         global_death_arr = result_df.select(col('global_deaths')).rdd.flatMap(lambda x: x).collect()
+        global_confirmed_inc_arr = result_df.select(col('global_confirmed_inc')).rdd.flatMap(lambda x: x).collect()
+        global_death_inc_arr = result_df.select(col('global_deaths_inc')).rdd.flatMap(lambda x: x).collect()
         sp500_arr = result_df.select(col('sp500_score')).rdd.flatMap(lambda x: x).collect()
         nasdaq100_arr = result_df.select(col('nasdaq100_score')).rdd.flatMap(lambda x: x).collect()
         dowjones_arr = result_df.select(col('dowjones_score')).rdd.flatMap(lambda x: x).collect()
@@ -109,16 +121,58 @@ def main():
         return render_template('covid_stock_chart.html', template_labels=date_arr,
                                arg_us_confirmed_arr=us_confirmed_arr,
                                arg_us_death_arr=us_death_arr,
+                               arg_us_confirmed_inc_arr=us_confirmed_inc_arr,
+                               arg_us_death_inc_arr=us_death_inc_arr,
                                arg_global_confirmed_arr=global_confirmed_arr,
                                arg_global_death_arr=global_death_arr,
+                               arg_global_confirmed_inc_arr=global_confirmed_inc_arr,
+                               arg_global_death_inc_arr=global_death_inc_arr,
                                arg_sp500_arr=sp500_arr,
                                arg_nasdaq100_arr=nasdaq100_arr,
                                arg_dowjones_arr=dowjones_arr,
+                               # arg_topk_us_json=topk_us_json,
                                )
     except ValueError as e:
         print(e)
         return jsonify(message="Incorrect data format, should be YYYY-MM-DD",
                        status=500)
+@app.route('/query_covid_topk', methods=['GET'])
+def query_top_cases_us():
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+    topk_str = request.args.get('topk')
+    try:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+        topk = int(topk_str)
+
+        # topk_us_json = query_top_cases_us(start_date, end_date, 10)
+
+        latest_df, is_resume_extract, latest_date = \
+            GU.read_latest_data(spark, COVID_US_FACT_TABLE_NAME)
+        # validation input arguments
+        if latest_date < end_date:
+            end_date = latest_date
+
+        result_df = covid_us_fact_df.filter((col('date') == end_date))
+
+        result_df = result_df.select(col('Province_State'), col('confirmed'), col('deaths'))\
+            .orderBy(col('date').desc(), col('confirmed').desc()).limit(topk)
+        result_json_tem = result_df.toJSON()
+        # convert from dictionary string to dictionary
+        result_json = result_json_tem.map(lambda x: ast.literal_eval(x)).collect()
+        # result_json = result_json_tem.collect()
+        print(result_json)
+        # result_arr = result_df.rdd.flatMap(lambda x: x).collect()
+        # return jsonify(result_json)
+
+        tem = jsonify(result_json)
+        return tem
+    except ValueError as e:
+        print(e)
+        return jsonify(message="Incorrect data format, should be YYYY-MM-DD",
+                       status=500)
+
 
 @app.route('/get_file/<string:filename>', methods=['GET'])
 def get_file(filename):
