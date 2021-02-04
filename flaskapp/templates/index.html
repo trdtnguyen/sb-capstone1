@@ -5,8 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>jQuery UI Datepicker - Select a Date Range</title>
   <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
-  <script src="https://code.jquery.com/jquery-1.12.4.js"></script>
+  <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+  <script src="{{url_for('static', filename='js/covidcor.js')}}"></script>
+<!--  For sort table-->
+  <link rel="stylesheet" href="//cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
+  <script src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+
+
   <script>
   /*Set default input for dates when document is ready*/
   $( document ).ready(function() {
@@ -56,60 +62,15 @@
           url2 = url2.concat('&', 'end_date=', [year2, month2, day2].join('-'))
           url2 = url2.concat('&', 'topk=',10)
           $.get(url2, function( data ) {
-              //alert('topk request return:', data);
-              console.log(data);
-              //var b=JSON.stringify(data);
-              //str = b.replace(/\\/g, '');
-              //console.log(str);
-
-              constructTable(data, '#table');
-              //constructTable(obj, '#table');
+              //constructTable is defined in covidcor.js
+              $('#content2').append($('<div/>').html("Top 10 states by number of cases"));
+              $('#content2').append($('<table/>').attr({"align":"left", "id":"table", "border":"1"}));
+              constructTable(data, 'table');
+              //$('#table').DataTable();
           });
   }
 
-  function constructTable(json_list, selector) {
 
-            // Getting the all column names
-            var cols = Headers(json_list, selector);
-
-            // Traversing the JSON data
-            for (var i = 0; i < json_list.length; i++) {
-                var row = $('<tr/>');
-                for (var colIndex = 0; colIndex < cols.length; colIndex++)
-                {
-                    var val = json_list[i][cols[colIndex]];
-
-                    // If there is any key, which is matching
-                    // with the column name
-                    if (val == null) val = "";
-                        row.append($('<td/>').html(val));
-                }
-
-                // Adding each row to the table
-                $(selector).append(row);
-            }
-   }
-   function Headers(list, selector) {
-      var columns = [];
-      var header = $('<tr/>');
-
-      for (var i = 0; i < list.length; i++) {
-          var row = list[i];
-
-          for (var k in row) {
-              if ($.inArray(k, columns) == -1) {
-                  columns.push(k);
-
-                  // Creating the header
-                  header.append($('<th/>').html(k));
-              }
-          }
-      }
-
-      // Appending the header to the table
-      $(selector).append(header);
-          return columns;
-  }
 
   </script>
 </head>
@@ -121,9 +82,9 @@
 <div id=content>
 </div>
 <div id=content2>
-  <table align = "center"
-                id="table" border="1">
-</table>
+<!--  <table align = "center"-->
+<!--                id="table" border="1">-->
+<!--</table>-->
 </div>
 
 

@@ -161,13 +161,8 @@ def query_top_cases_us():
         result_json_tem = result_df.toJSON()
         # convert from dictionary string to dictionary
         result_json = result_json_tem.map(lambda x: ast.literal_eval(x)).collect()
-        # result_json = result_json_tem.collect()
-        print(result_json)
-        # result_arr = result_df.rdd.flatMap(lambda x: x).collect()
-        # return jsonify(result_json)
+        return jsonify(result_json)
 
-        tem = jsonify(result_json)
-        return tem
     except ValueError as e:
         print(e)
         return jsonify(message="Incorrect data format, should be YYYY-MM-DD",
