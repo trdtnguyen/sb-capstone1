@@ -231,6 +231,12 @@ class Covid:
         file_name2 = os.path.basename(url2)
         self.spark.sparkContext.addFile(url2)
         death_df = self.spark.read.csv('file://' + SparkFiles.get(file_name2), header=True, inferSchema=True)
+        # Filter only data from countries
+        confirmed_df = confirmed_df.filter(confirmed_df['Province/State'].isNull())
+        confirmed_df = confirmed_df.drop(confirmed_df['Province/State'])
+
+        death_df = death_df.filter(death_df['Province/State'].isNull())
+        death_df = death_df.drop(death_df['Province/State'])
 
         # Get latest date from raw table
         begin_date_str = death_df.schema.names[date_col]
@@ -256,12 +262,12 @@ class Covid:
                 ### Resuming extract
                 start_index = date_col + (latest_date.day - begin_date.day)
                 confirmed_df = confirmed_df.select(
-                    confirmed_df['Province/State'], confirmed_df['Country/Region'],
+                    confirmed_df['Country/Region'],
                     confirmed_df['Lat'], confirmed_df['Long_'],
                     *(confirmed_df.columns[start_index:])
                 )
                 death_df = death_df.select(
-                    death_df['Province/State'], death_df['Country/Region'],
+                    death_df['Country/Region'],
                     death_df['Lat'], death_df['Long_'],
                     *(death_df.columns[start_index:])
                 )
@@ -275,23 +281,23 @@ class Covid:
         #######################################
         # Step 3 Transform data
         #######################################
-        by_cols = ['Province/State', 'Country/Region', 'Lat', 'Long']
+        by_cols = ['Country/Region', 'Lat', 'Long']
         trans_df1 = self.GU.transpose_columns_to_rows(confirmed_df,
                                                  by_cols, 'date', 'confirmed')
         trans_df2 = self.GU.transpose_columns_to_rows(death_df,
                                                  by_cols, 'date', 'deaths')
-        df = trans_df2.join(trans_df1, (trans_df1['Country/Region'] == trans_df2['Country/Region']) & (
-                    trans_df1.date == trans_df2.date)) \
+        df = trans_df2.join(trans_df1,
+                            (trans_df1['Country/Region'] == trans_df2['Country/Region']) &
+                            (trans_df1.date == trans_df2.date)) \
             .select(
-            trans_df2['Province/State'], trans_df2['Country/Region'],
+            trans_df2['Country/Region'],
             trans_df2['Lat'], trans_df2['Long'],
             trans_df2['date'], trans_df1['confirmed'], trans_df2['deaths']
         )
         # Refine the date column from 'yyyy/mm/dd' to 'yyyy-mm-dd'
         date_udf = udf(lambda d: convert_date(d), DateType())
         df = df.withColumn('date', date_udf(df['date']))
-        df = df.withColumnRenamed('Province/State', 'Province_State') \
-            .withColumnRenamed('Country/Region', 'Country_Region') \
+        df = df.withColumnRenamed('Country/Region', 'Country_Region') \
             .withColumnRenamed('Long', 'Long_')
 
         # filter null
@@ -716,10 +722,12 @@ class Covid:
         #          "GROUP BY Country_Region, date "
         #          "ORDER BY code "
         #          )
+
+        # Note: some contries (e.g., United Kingdom) have data from both the country and the Province_State
+        # so in such case, we just get the data from row where Province_State is null (the country)
         key = 'Country_Region'
-        s = f"SELECT DISTINCT {key}, date, SUM(confirmed) as confirmed, SUM(deaths) as deaths " +\
+        s = f"SELECT DISTINCT {key}, date, confirmed, deaths " +\
                  f" FROM  {RAW_TABLE_NAME} " +\
-                 f"GROUP BY date, {key} " +\
                  f"ORDER BY date, {key}"
         trans_df = self.spark.sql(s)
         trans_df = trans_df.toDF(key, 'date', 'confirmed', 'deaths')

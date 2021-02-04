@@ -50,7 +50,8 @@
 
           var href = location.href
           var url = href + "query_covid_stock_chart"
-          var url2 = href + "query_covid_topk"
+          var url2 = href + "query_covid_topk_us"
+          var url3 = href + "query_covid_topk_global"
 
           url = url.concat('?', 'start_date=', [year1, month1, day1].join('-'))
           url = url.concat('&', 'end_date=', [year2, month2, day2].join('-'))
@@ -64,9 +65,20 @@
           $.get(url2, function( data ) {
               //constructTable is defined in covidcor.js
               $('#content2').append($('<div/>').html("Top 10 states by number of cases"));
-              $('#content2').append($('<table/>').attr({"align":"left", "id":"table", "border":"1"}));
-              constructTable(data, 'table');
-              //$('#table').DataTable();
+              $('#content2').append($('<table/>').attr({"align":"left", "id":"table1", "border":"1"}));
+              constructTable(data, 'table1');
+              //$('#table1').DataTable();
+          });
+
+          url3 = url3.concat('?', 'start_date=', [year1, month1, day1].join('-'))
+          url3 = url3.concat('&', 'end_date=', [year2, month2, day2].join('-'))
+          url3 = url3.concat('&', 'topk=',10)
+          $.get(url3, function( data ) {
+              //constructTable is defined in covidcor.js
+              $('#content3').append($('<div/>').html("Top 10 countries by number of cases"));
+              $('#content3').append($('<table/>').attr({"align":"left", "id":"table2", "border":"1"}));
+              constructTable(data, 'table2');
+
           });
   }
 
@@ -81,7 +93,14 @@
 <button id="submit">Submit</button>
 <div id=content>
 </div>
-<div id=content2>
+
+<div class="row">
+  <div class="col">
+    <div id=content2></div>
+  </div>
+  <div class="col">
+     <div id=content3></div>
+  </div>
 <!--  <table align = "center"-->
 <!--                id="table" border="1">-->
 <!--</table>-->
