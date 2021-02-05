@@ -137,7 +137,10 @@ class BOL:
         ####################################
         # Step 5 Write to Database
         ####################################
+        print(len(insert_list))
+        print('num months=', len(insert_list)/len(series_ids))
         df = pd.DataFrame(insert_list)
+        df = df.drop_duplicates()
         print("Extract data Done.")
         print("Insert to database...", end=' ')
         try:
@@ -184,6 +187,7 @@ class BOL:
         #########
 
         # Add date column
+        raw_df = raw_df.select(col('series_id'), col('year'), col('period'), col('value'), col('footnotes')).distinct()
         date_udf = udf(lambda year, period: BOL_period_to_date(year, period), DateType())
         df = raw_df.withColumn('date', date_udf(raw_df['year'], raw_df['period']))
         # Add dateid column

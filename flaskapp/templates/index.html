@@ -7,10 +7,11 @@
   <link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
   <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
   <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+<!--  our js and css-->
   <script src="{{url_for('static', filename='js/covidcor.js')}}"></script>
-<!--  For sort table-->
-  <link rel="stylesheet" href="//cdn.datatables.net/1.10.23/css/jquery.dataTables.min.css">
-  <script src="https://cdn.datatables.net/1.10.23/js/jquery.dataTables.min.js"></script>
+  <link rel="stylesheet" href="{{url_for('static', filename='css/covidcor.css')}}">
+
+
 
 
   <script>
@@ -67,7 +68,7 @@
               $('#content2').append($('<div/>').html("Top 10 states by number of cases"));
               $('#content2').append($('<table/>').attr({"align":"left", "id":"table1", "border":"1"}));
               constructTable(data, 'table1');
-              //$('#table1').DataTable();
+
           });
 
           url3 = url3.concat('?', 'start_date=', [year1, month1, day1].join('-'))

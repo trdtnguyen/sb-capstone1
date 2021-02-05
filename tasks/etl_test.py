@@ -35,10 +35,10 @@ spark = SparkSession \
 # Enable Arrow-based columnar data transfers
 spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 
-etl_covid = True
-etl_stock = True
-etl_bol = False
-etl_consolid = True
+etl_covid = False
+etl_stock = False
+etl_bol = True
+etl_consolid = False
 
 #### Covid
 if etl_covid:

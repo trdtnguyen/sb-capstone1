@@ -13,6 +13,7 @@ function constructTable(json_list, tableid) {
                     // If there is any key, which is matching
                     // with the column name
                     if (val == null) val = "";
+//                    row.append($('<td/>').html(val));
                     /*add commas in to number*/
                     val_str = val.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
                     row.append($('<td/>').html(val_str));
@@ -36,7 +37,7 @@ function constructTable(json_list, tableid) {
                   // Creating the header
                   var funcName = "sortTable(" + count + ",'" +  tableid + "')"
                   console.log(funcName);
-                  header.append($('<th/>').attr({"onclick":funcName}).html(k));
+                  header.append($('<th/>').attr({"onclick":funcName, "class":"sort-by"}).html(k));
                   count += 1;
 
               }
@@ -47,9 +48,20 @@ function constructTable(json_list, tableid) {
       $(selector).append(header);
           return columns;
   }
+/*
+Sort the table by clicking on the header
+Input:
+    n - index of the header
+    tableid - string: table id
+    type - string: type for comparator. Supported types: 'text', 'number', 'date'
 
+*/
   function sortTable(n, tableid) {
   var table, rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+  var val1, val2;
+  var letter_pattern = /^[a-zA-Z]+$/;
+  var number_pattern = /^[0-9]+$/;
+
   console.log('on sortTable, tableid = ' + tableid);
   table = document.getElementById(tableid);
   console.log('on sortTable, table = ' + table);
@@ -72,22 +84,37 @@ function constructTable(json_list, tableid) {
       one from current row and one from the next: */
       x = rows[i].getElementsByTagName("TD")[n];
       y = rows[i + 1].getElementsByTagName("TD")[n];
+
+      // get the string and remove comma if any
+      val1 = x.innerHTML.toLowerCase();
+      val1 = val1.replace(/,/g, '');
+
+
+      val2 = y.innerHTML.toLowerCase();
+      val2 = val2.replace(/,/g, '');
+      if(val1.match(number_pattern)){
+        val1 = parseInt(val1);
+      }
+      if(val2.match(number_pattern)){
+        val2 = parseInt(val2);
+      }
+
       /* Check if the two rows should switch place,
       based on the direction, asc or desc: */
       if (dir == "asc") {
-        if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+        if (val1 > val2) {
           // If so, mark as a switch and break the loop:
           shouldSwitch = true;
           break;
         }
       } else if (dir == "desc") {
-        if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+        if (val1 < val2) {
           // If so, mark as a switch and break the loop:
           shouldSwitch = true;
           break;
         }
       }
-    }
+    } //end for
     if (shouldSwitch) {
       /* If a switch has been marked, make the switch
       and mark that a switch has been done: */
@@ -103,5 +130,5 @@ function constructTable(json_list, tableid) {
         switching = true;
       }
     }
-  }
+  } //end while
 }
