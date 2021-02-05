@@ -215,7 +215,62 @@ class Consolidation:
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
+    """
+    Consolidate Covid, Stock and BOL data from fact tables
+    """
+    def consolidate_covid_stock_bol(self):
+        logger = self.logger
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
+        COVID_STOCK_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
+        BOL_SERIES_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['BOL_SERIES_FACT_TABLE_NAME']
 
+        #######################################
+        # Step 1 Read from database to determine the last written data point
+        #######################################
+        latest_df, is_resume_extract, latest_date = \
+            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
+
+        end_date = datetime.now()
+
+        if is_resume_extract:
+            # we only compare two dates by day, month, year excluding time
+            if latest_date.day == end_date.day and \
+                    latest_date.month == end_date.month and \
+                    latest_date.year == end_date.year:
+                print(f'The system has updated data up to {end_date}. No further extract needed.')
+                return
+            else:
+                start_date = latest_date
+        # update latest_data table for FACT_TABLE_NAME
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
+
+        #######################################
+        # Step 2 Consolidate data
+        #######################################
+        # Read tables on main memory for join
+        df1 = self.GU.read_from_db(self.spark, COVID_STOCK_FACT_TABLE_NAME)
+        df1.createOrReplaceTempView(COVID_STOCK_FACT_TABLE_NAME)
+
+        df2 = self.GU.read_from_db(self.spark, BOL_SERIES_FACT_TABLE_NAME)
+        df2.createOrReplaceTempView(BOL_SERIES_FACT_TABLE_NAME)
+
+        s = "SELECT DISTINCT c.dateid, c.date, c.year, c.month, c.month_name" + \
+            "c.us_confirmed, c.us_deaths, c.us_confirmed_inc, c.us_deaths_inc, " + \
+            "c.us_confirmed_inc_pct, c.us_deaths_inc_pct, " + \
+            "c.global_confirmed, c.global_deaths, c.global_confirmed_inc, c.global_deaths_inc,  " + \
+            "c.global_confirmed_inc_pct, c.global_deaths_inc_pct, " + \
+            " b.series_id as bol_series_id, b.value as bol_series_value " + \
+            f"FROM {COVID_STOCK_FACT_TABLE_NAME} as c LEFT JOIN" + \
+            f" {BOL_SERIES_FACT_TABLE_NAME} as b ON c.dateid = b.dateid " + \
+            "ORDER BY c.dateid, c.date"
+
+        df = self.spark.sql(s)
+        # df.show()
+        print(f'Write to table {FACT_TABLE_NAME}...')
+        self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
+        print('Done.')
 
 
 # self test

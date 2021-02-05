@@ -7,6 +7,7 @@ from pyspark.sql.functions import array, col, explode, struct, lit, udf, when
 
 from db.DB import DB
 import pandas as pd
+from pandas_datareader import data
 import configparser
 from sqlalchemy.sql import text
 
@@ -60,7 +61,7 @@ class BOL:
     def extract_BOL(self):
         conn = self.conn
         logger = self.logger
-        RAW_TABLE_NAME = 'bol_raw'
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['BOL_SERIES_FACT_TABLE_NAME']
         DIM_TABLE_NAME = 'bol_series_dim'
 
         is_resume_extract = False
@@ -72,10 +73,10 @@ class BOL:
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
-            self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
+            self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
         end_date = datetime.now()
-        raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
+        fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
 
         if is_resume_extract:
             # we only compare two dates by month, year excluding time
@@ -96,7 +97,7 @@ class BOL:
         #########
         ### Step 2 Update latest date
         #########
-        latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
+        latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
 
         #########
         ### Step 3 Read series from database
@@ -108,47 +109,37 @@ class BOL:
         #########
         ### Step 4 Extract data from BOL using API
         #########
+        start_date_str = start_date.strftime('%Y-%m-%d')
+        end_date_str = end_date.strftime('%Y-%m-%d')
         insert_list = []
         series_ids = self.GU.rows_to_array(dim_df, 'series_id')
 
-        # API_url = 'https://api.bls.gov/publicAPI/v2/timeseries/data/'
-        API_url = self.GU.CONFIG['BOL']['BOL_API_URL']
-        data = json.dumps({"seriesid": series_ids, "startyear": str(start_year), "endyear": str(end_year)})
-
-        headers = {'Content-type': 'application/json'}
-        p = requests.post(API_url, data=data, headers=headers)
-        json_data = json.loads(p.text)
-        for series in json_data['Results']['series']:
-            seriesID = series['seriesID']
-            for item in series['data']:
+        bol_df = data.DataReader(series_ids, 'fred', start_date_str, end_date_str)
+        for i, row in bol_df.iterrows():
+            date = i
+            dateid = from_date_to_dateid(i)
+            for j in range(len(series_ids)):
                 insert_val = {}
-                insert_val['series_id'] = seriesID
-                insert_val['year'] = item['year']
-                insert_val['period'] = item['period']
-                insert_val['value'] = float(item['value'])
+                insert_val['date'] = i
+                insert_val['dateid'] = from_date_to_dateid(i)
+                insert_val['series_id'] = series_ids[j]
+                insert_val['value'] = row[j]
 
-                footnotes = ""
-                for footnote in item['footnotes']:
-                    if footnote:
-                        footnotes = footnotes + footnote['text'] + ','
-                insert_val['footnotes'] = footnotes
                 insert_list.append(insert_val)
 
         ####################################
         # Step 5 Write to Database
         ####################################
-        print(len(insert_list))
-        print('num months=', len(insert_list)/len(series_ids))
+
         df = pd.DataFrame(insert_list)
-        df = df.drop_duplicates()
-        print("Extract data Done.")
-        print("Insert to database...", end=' ')
+        print("Extract BOL data Done.")
+        print(f"Insert to table {FACT_TABLE_NAME} ...", end=' ')
         try:
-            df.to_sql(RAW_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
+            df.to_sql(FACT_TABLE_NAME, conn, schema=None, if_exists='append', index=False)
             # manually insert a dictionary will not work due to the limitation number of records insert
             # results = conn.execute(table.insert(), insert_list)
         except ValueError:
-            logger.error(f'Error Query when extracting data for {RAW_TABLE_NAME} table')
+            logger.error(f'Error Query when extracting data for {FACT_TABLE_NAME} table')
 
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
@@ -187,16 +178,27 @@ class BOL:
         #########
 
         # Add date column
+        print(raw_df.count())
         raw_df = raw_df.select(col('series_id'), col('year'), col('period'), col('value'), col('footnotes')).distinct()
+        print(raw_df.count())
+
         date_udf = udf(lambda year, period: BOL_period_to_date(year, period), DateType())
         df = raw_df.withColumn('date', date_udf(raw_df['year'], raw_df['period']))
         # Add dateid column
         dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
         df = df.withColumn('dateid', dateid_udf(df['date']))
-
+        print(df.count())
+        df = df.drop_duplicates("series_id", "dateid")
+        print(df.count())
         # Reorder columns to match the schema
         df = df.select(df['dateid'], df['series_id'], df['date'], df['value'], df['footnotes'])
-
+        print(df.count())
+        df = df.distinct()
+        print(df.count())
+        df.createOrReplaceTempView("tem")
+        s = "SELECT DISTINCT * FROM tem"
+        df_tem = self.spark.sql(s)
+        print(df_tem.count())
         ####################################
         # Step 4 Write to Database
         ####################################
