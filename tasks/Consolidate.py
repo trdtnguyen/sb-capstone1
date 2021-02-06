@@ -220,8 +220,8 @@ class Consolidation:
     """
     def consolidate_covid_stock_bol(self):
         logger = self.logger
-        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
-        COVID_STOCK_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_BOL_FACT_TABLE_NAME']
+        COVID_STOCK_MONTHLY_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_MONTHLY_FACT_TABLE_NAME']
         BOL_SERIES_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['BOL_SERIES_FACT_TABLE_NAME']
 
         #######################################
@@ -248,24 +248,27 @@ class Consolidation:
         # Step 2 Consolidate data
         #######################################
         # Read tables on main memory for join
-        df1 = self.GU.read_from_db(self.spark, COVID_STOCK_FACT_TABLE_NAME)
-        df1.createOrReplaceTempView(COVID_STOCK_FACT_TABLE_NAME)
+        df1 = self.GU.read_from_db(self.spark, COVID_STOCK_MONTHLY_FACT_TABLE_NAME)
+        df1.createOrReplaceTempView(COVID_STOCK_MONTHLY_FACT_TABLE_NAME)
 
         df2 = self.GU.read_from_db(self.spark, BOL_SERIES_FACT_TABLE_NAME)
         df2.createOrReplaceTempView(BOL_SERIES_FACT_TABLE_NAME)
 
-        s = "SELECT DISTINCT c.dateid, c.date, c.year, c.month, c.month_name" + \
+        s = "SELECT DISTINCT b.dateid, b.date, " + \
             "c.us_confirmed, c.us_deaths, c.us_confirmed_inc, c.us_deaths_inc, " + \
             "c.us_confirmed_inc_pct, c.us_deaths_inc_pct, " + \
             "c.global_confirmed, c.global_deaths, c.global_confirmed_inc, c.global_deaths_inc,  " + \
             "c.global_confirmed_inc_pct, c.global_deaths_inc_pct, " + \
             " b.series_id as bol_series_id, b.value as bol_series_value " + \
-            f"FROM {COVID_STOCK_FACT_TABLE_NAME} as c LEFT JOIN" + \
-            f" {BOL_SERIES_FACT_TABLE_NAME} as b ON c.dateid = b.dateid " + \
-            "ORDER BY c.dateid, c.date"
+            f"FROM {BOL_SERIES_FACT_TABLE_NAME} as b LEFT JOIN " + \
+            f" {COVID_STOCK_MONTHLY_FACT_TABLE_NAME} as c ON b.dateid = c.dateid " + \
+            " ORDER BY b.dateid, b.date"
 
         df = self.spark.sql(s)
         # df.show()
+        # Since BOL has longer history data, some of columns from COVID_STOCK_MONTHLY_FACT_TABLE_NAME
+        # would have null value, we fill those nulls with 0
+        df = df.na.fill(value=0)
         print(f'Write to table {FACT_TABLE_NAME}...')
         self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')

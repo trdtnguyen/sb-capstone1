@@ -77,3 +77,4 @@ if etl_consolid:
     consolidate = Consolidation(spark)
     consolidate.consolidate_covid_stock()
     consolidate.aggregate_covid_stock_monthly_fact()
+    consolidate.consolidate_covid_stock_bol()

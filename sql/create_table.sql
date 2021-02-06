@@ -54,6 +54,7 @@ INSERT INTO latest_data VALUES("bol_series_raw", @default_date);
 
 INSERT INTO latest_data VALUES("covid_stock_fact", @default_date);
 INSERT INTO latest_data VALUES("covid_stock_monthly_fact", @default_date);
+INSERT INTO latest_data VALUES("covid_stock_bol_monthly_fact", @default_date);
 
 /*dimension table used for extracting raw data*/
 CREATE TABLE IF NOT EXISTS covid19_us_raw (
