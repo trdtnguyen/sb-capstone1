@@ -62,7 +62,8 @@ STOCK_SP500_URL=http://en.wikipedia.org/wiki/List_of_S%26P_500_companies
 
 [BOL]
 BOL_API_URL=https://api.bls.gov/publicAPI/v2/timeseries/data/
-BOL_OLDEST_DATE=2011-01-01
+#BOL_OLDEST_DATE=2011-01-01
+BOL_OLDEST_DATE=2000-01-01
 [API]
 API_HOST=192.168.0.2
 API_PORT=8082

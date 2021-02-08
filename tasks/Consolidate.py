@@ -206,7 +206,7 @@ class Consolidation:
         #                df['us_confirmed'], df['us_deaths'], df['global_confirmed'], df['global_deaths'],
         #                df['sp500_score'], df['nasdaq100_score'], df['dowjones_score']
         #                )
-        df.show()
+
         ####################################
         # Step 4 Write to Database
         ####################################
@@ -266,14 +266,14 @@ class Consolidation:
             " ORDER BY b.dateid, bol_series_id"
 
         df = self.spark.sql(s)
-        # df.show()
+
         # Since BOL has longer history data, some of columns from COVID_STOCK_MONTHLY_FACT_TABLE_NAME
         # would have null value, we fill those nulls with 0
         df = df.na.fill(value=0)
 
         month_name_udf = udf(lambda d: d.strftime('%B'), StringType())
         df = df.withColumn('month_name', month_name_udf(df['date']))
-        df.show()
+
         print(f'Write to table {FACT_TABLE_NAME}...')
         self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')

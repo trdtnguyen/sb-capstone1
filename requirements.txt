@@ -1,111 +1,30 @@
-alembic @ file:///tmp/build/80754af9/alembic_1600132131249/work
-anyjson==0.3.3
-apache-airflow @ file:///tmp/build/80754af9/airflow-split_1605877887939/work
-apispec==1.3.3
-argcomplete @ file:///tmp/build/80754af9/argcomplete_1606254517417/work
-argon2-cffi==19.1.0
-arrow @ file:///tmp/build/80754af9/arrow_1599270375481/work
-attrs==19.3.0
-Babel @ file:///tmp/build/80754af9/babel_1607110387436/work
-bcrypt @ file:///tmp/build/80754af9/bcrypt_1597936221426/work
-beautifulsoup4 @ file:///tmp/build/80754af9/beautifulsoup4_1601924105527/work
-brotlipy==0.7.0
-cached-property @ file:///tmp/build/80754af9/cached-property_1600785575025/work
-cattrs==1.0.0
+beautifulsoup4==4.9.3
+bs4==0.0.1
 certifi==2020.12.5
-cffi @ file:///tmp/build/80754af9/cffi_1606255081583/work
-chardet @ file:///tmp/build/80754af9/chardet_1607706746162/work
+chardet==4.0.0
 click==7.1.2
-colorama @ file:///tmp/build/80754af9/colorama_1607707115595/work
-colorlog==4.7.2
-colour==0.1.5
-configparser @ file:///tmp/build/80754af9/configparser_1602256123427/work
-croniter @ file:///tmp/build/80754af9/croniter_1602515594144/work
-cryptography @ file:///tmp/build/80754af9/cryptography_1607635341180/work
-defusedxml==0.6.0
-dill @ file:///tmp/build/80754af9/dill_1605066453875/work
-docutils==0.16
+covidcor==0.0.1
+covidcor-trdtnguyen==0.0.1
 Flask==1.1.2
-Flask-Admin @ file:///tmp/build/80754af9/flask-admin_1592429635880/work
-Flask-AppBuilder @ file:///tmp/build/80754af9/flask-appbuilder_1593098200462/work
-Flask-Babel==0.12.2
-Flask-Caching @ file:///tmp/build/80754af9/flask-caching_1599767982468/work
-Flask-JWT-Extended @ file:///tmp/build/80754af9/flask-jwt-extended_1605109379619/work
-Flask-Login==0.4.1
-Flask-OpenID==1.2.5
-Flask-SQLAlchemy @ file:///tmp/build/80754af9/flask-sqlalchemy_1596836624296/work
-flask-swagger==0.2.13
-Flask-WTF==0.14.3
-funcsigs==1.0.2
-furl==2.1.0
-future==0.18.2
-graphviz @ file:///tmp/build/80754af9/python-graphviz_1606773791755/work
-gunicorn==20.0.4
-idna @ file:///tmp/build/80754af9/idna_1593446292537/work
-importlib-metadata @ file:///tmp/build/80754af9/importlib-metadata_1602276842396/work
-infinity==1.5
-intervals==0.9.0
-iso8601==0.1.13
+Flask-Cors==3.0.10
+idna==2.10
 itsdangerous==1.1.0
-Jinja2==2.11.2
-json-merge-patch==0.2
-jsonschema @ file:///tmp/build/80754af9/jsonschema_1602607155483/work
-lazy-object-proxy @ file:///tmp/build/80754af9/lazy-object-proxy_1606850056019/work
-lockfile==0.12.2
-lxml @ file:///tmp/build/80754af9/lxml_1606516814318/work
-Mako @ file:///tmp/build/80754af9/mako_1610650590832/work
-Markdown @ file:///tmp/build/80754af9/markdown_1605111056890/work
+Jinja2==2.11.3
+lxml==4.6.2
 MarkupSafe==1.1.1
-marshmallow @ file:///tmp/build/80754af9/marshmallow_1608577384097/work
-marshmallow-enum==1.5.1
-marshmallow-sqlalchemy @ file:///tmp/build/80754af9/marshmallow-sqlalchemy_1606149681131/work
-mkl-fft==1.2.0
-mkl-random==1.1.1
-mkl-service==2.3.0
-natsort @ file:///tmp/build/80754af9/natsort_1606153679261/work
-numpy @ file:///tmp/build/80754af9/numpy_and_numpy_base_1603570489231/work
-orderedmultidict==1.0.1
-pandas==1.2.0
-pandas-datareader @ file:///tmp/build/80754af9/pandas-datareader_1595379313840/work
-passlib==1.7.4
-pendulum==1.4.4
-phonenumbers @ file:///tmp/build/80754af9/phonenumbers_1610565470412/work
-prison @ file:///tmp/build/80754af9/prison_1604347132917/work
-psutil @ file:///tmp/build/80754af9/psutil_1598370257551/work
-py4j @ file:///tmp/build/80754af9/py4j_1593437928427/work
-pyarrow==0.15.1
-pycparser @ file:///tmp/build/80754af9/pycparser_1594388511720/work
-Pygments @ file:///tmp/build/80754af9/pygments_1610565767015/work
-PyJWT==1.7.1
-PyMySQL @ file:///tmp/build/80754af9/pymysql_1610482871788/work
-pyOpenSSL @ file:///tmp/build/80754af9/pyopenssl_1608057966937/work
-pyrsistent @ file:///tmp/build/80754af9/pyrsistent_1600141720057/work
-PySocks @ file:///tmp/build/80754af9/pysocks_1605305779399/work
-pyspark @ file:///tmp/build/80754af9/pyspark_1593438048599/work
-python-daemon @ file:///tmp/build/80754af9/python-daemon_1600290909406/work
+numpy==1.20.1
+pandas==1.2.1
+pandas-datareader==0.9.0
+pkg-resources==0.0.0
+py4j==0.10.9
+PyMySQL==1.0.2
+pyspark==3.0.1
 python-dateutil==2.8.1
-python-editor==1.0.4
-python3-openid==3.1.0
-pytz @ file:///tmp/build/80754af9/pytz_1608922264688/work
-pytzdata @ file:///tmp/build/80754af9/pytzdata_1597789602719/work
-PyYAML==5.3.1
-requests @ file:///tmp/build/80754af9/requests_1608241421344/work
-setproctitle==1.1.10
-six @ file:///tmp/build/80754af9/six_1605205327372/work
-soupsieve @ file:///tmp/build/80754af9/soupsieve_1607965878077/work
-SQLAlchemy @ file:///tmp/build/80754af9/sqlalchemy_1608243708429/work
-SQLAlchemy-JSONField==0.9.0
-SQLAlchemy-Utils @ file:///tmp/build/80754af9/sqlalchemy-utils_1600554316736/work
-tabulate==0.8.7
-tenacity @ file:///tmp/build/80754af9/tenacity_1608241821132/work
-termcolor==1.1.0
-text-unidecode==1.3
-thrift==0.13.0
-typing-extensions @ file:///tmp/build/80754af9/typing_extensions_1598376058250/work
-tzlocal @ file:///tmp/build/80754af9/tzlocal_1597435729670/work
-unicodecsv==0.14.1
-urllib3 @ file:///tmp/build/80754af9/urllib3_1606938623459/work
+pytz==2021.1
+requests==2.25.1
+six==1.15.0
+soupsieve==2.1
+SQLAlchemy==1.3.23
+urllib3==1.26.3
+waitress==1.4.4
 Werkzeug==1.0.1
-WTForms @ file:///tmp/build/80754af9/wtforms_1597707484216/work
-zipp @ file:///tmp/build/80754af9/zipp_1604001098328/work
-zope.deprecation==4.4.0
