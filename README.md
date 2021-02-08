@@ -27,10 +27,46 @@ Note: To avoid Python version error due to differences of python version in  Spa
 $ (venv) pip3 install -r requirements.txt
 ```
 ***Step 3: Setup Database***
-This project use mysql as the back-end database. 
+This project use mysql as the back-end database. Change the `config.cnf` to match your mysql settings:
 ```
-$ 
+[DATABASE]
+MYSQL_DATABASE=covid19cor
+AIRFLOW_DATABASE=airflowdb
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_ROOT_PASSWORD=rootpassword
+MYSQL_USER=myusername
+MYSQL_PASSWORD=mysqlpassword
 ```
+
+Create database and tables:
+
+```
+$ mysqladmin -u root -p create covid19cor
+$ mysql -u root -p covid19cor < sql/create_table.sql
+```
+
+***Step 4: Run ETL manually***
+Before running the ETL, ensure your Spark driver and workers are started and configurated properly.
+```
+$ python tasks/etl_test.py
+```
+
+***Step 5: Config and start front-end Flask App***
+Change Flask's configuration in `config.cnf` file to match yours settings:
+```
+[API]
+API_HOST=<your_ip> # such as 192.168.0.2
+API_PORT=8082
+```
+
+Start Flask web server
+```
+$ python flaskapp/app.py
+```
+***Step 5: Access dashboard***
+After the flask app started, open your browser with url: `http://<API_HOST>:<API_PORT>` for example `http://192.168.0.2:8082/`. 
+
 
 ## Techniques
 This section list common Data Engineering techniques and general programming techniques used in this project.
