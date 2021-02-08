@@ -254,21 +254,26 @@ class Consolidation:
         df2 = self.GU.read_from_db(self.spark, BOL_SERIES_FACT_TABLE_NAME)
         df2.createOrReplaceTempView(BOL_SERIES_FACT_TABLE_NAME)
 
-        s = "SELECT DISTINCT b.dateid, b.date, " + \
+        s = "SELECT DISTINCT b.dateid, b.date, YEAR(b.date) as year, MONTH(b.date) as month, " + \
+            " b.series_id as bol_series_id, b.value as bol_series_value, " + \
             "c.us_confirmed, c.us_deaths, c.us_confirmed_inc, c.us_deaths_inc, " + \
             "c.us_confirmed_inc_pct, c.us_deaths_inc_pct, " + \
             "c.global_confirmed, c.global_deaths, c.global_confirmed_inc, c.global_deaths_inc,  " + \
             "c.global_confirmed_inc_pct, c.global_deaths_inc_pct, " + \
-            " b.series_id as bol_series_id, b.value as bol_series_value " + \
-            f"FROM {BOL_SERIES_FACT_TABLE_NAME} as b LEFT JOIN " + \
+            "c.sp500_score, c.nasdaq100_score, c.dowjones_score " + \
+            f" FROM {BOL_SERIES_FACT_TABLE_NAME} as b LEFT JOIN " + \
             f" {COVID_STOCK_MONTHLY_FACT_TABLE_NAME} as c ON b.dateid = c.dateid " + \
-            " ORDER BY b.dateid, b.date"
+            " ORDER BY b.dateid, bol_series_id"
 
         df = self.spark.sql(s)
         # df.show()
         # Since BOL has longer history data, some of columns from COVID_STOCK_MONTHLY_FACT_TABLE_NAME
         # would have null value, we fill those nulls with 0
         df = df.na.fill(value=0)
+
+        month_name_udf = udf(lambda d: d.strftime('%B'), StringType())
+        df = df.withColumn('month_name', month_name_udf(df['date']))
+        df.show()
         print(f'Write to table {FACT_TABLE_NAME}...')
         self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')

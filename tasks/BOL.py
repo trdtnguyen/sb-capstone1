@@ -67,7 +67,9 @@ class BOL:
         is_resume_extract = False
         latest_date = self.GU.START_DEFAULT_DATE
         end_date = self.GU.START_DEFAULT_DATE
-        start_date = datetime(2011, 1, 1)
+        # start_date = datetime(2011, 1, 1)
+        start_date_str = self.GU.CONFIG['BOL']['BOL_OLDEST_DATE']
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
 
         #######################################
         # Step 1 Read from database to determine the last written data point

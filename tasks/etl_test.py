@@ -70,7 +70,6 @@ if etl_stock:
 if etl_bol:
     bol = BOL(spark)
     bol.extract_BOL()
-    # bol.transform_raw_to_fact_bol()
 
 ### Consolidate
 if etl_consolid:

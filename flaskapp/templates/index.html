@@ -65,8 +65,8 @@
           url2 = url2.concat('&', 'topk=',10)
           $.get(url2, function( data ) {
               //constructTable is defined in covidcor.js
-              $('#content2').append($('<div/>').html("Top 10 states by number of cases"));
-              $('#content2').append($('<table/>').attr({"align":"left", "id":"table1", "border":"1"}));
+              $('#table_topk_1').append($('<div/>').html("Top 10 states by number of cases"));
+              $('#table_topk_1').append($('<table/>').attr({"align":"left", "id":"table1", "border":"1"}));
               constructTable(data, 'table1');
 
           });
@@ -76,11 +76,21 @@
           url3 = url3.concat('&', 'topk=',10)
           $.get(url3, function( data ) {
               //constructTable is defined in covidcor.js
-              $('#content3').append($('<div/>').html("Top 10 countries by number of cases"));
-              $('#content3').append($('<table/>').attr({"align":"left", "id":"table2", "border":"1"}));
+              $('#table_topk_2').append($('<div/>').html("Top 10 countries by number of cases"));
+              $('#table_topk_2').append($('<table/>').attr({"align":"left", "id":"table2", "border":"1"}));
               constructTable(data, 'table2');
 
           });
+          // Unemployment rate
+          var url4 = href + "query_covid_unemployment"
+          url4 = url4.concat('?', 'start_date=', [year1, month1, day1].join('-'))
+          url4 = url4.concat('&', 'end_date=', [year2, month2, day2].join('-'))
+
+          $.get(url4, function( data ) {
+              $('#unemployment_chart').html(data);
+          });
+
+
   }
 
 
@@ -92,19 +102,26 @@
 <input type="date" id="date-input1" value="2020-01-02" required />
 <input type="date" id="date-input2" required />
 <button id="submit">Submit</button>
-<div id=content>
+<div class="row">
+  <div class="col">
+    <div id=content>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div id=table_topk_1></div>
+  </div>
+  <div class="col">
+     <div id=table_topk_2></div>
+  </div>
 </div>
 
 <div class="row">
   <div class="col">
-    <div id=content2></div>
+    <div id=unemployment_chart>
+    </div>
   </div>
-  <div class="col">
-     <div id=content3></div>
-  </div>
-<!--  <table align = "center"-->
-<!--                id="table" border="1">-->
-<!--</table>-->
 </div>
 
 
