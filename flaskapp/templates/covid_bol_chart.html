@@ -1,0 +1,591 @@
+<!--{% extends "layout.html" %} {% block content %}-->
+ <script src="{{url_for('static', filename='js/external/Chart.bundle.min.js')}}"></script>
+
+<div class="container">
+    <div class="row">
+        <div class="col">
+            <canvas id="covid_bol_chart"></canvas>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <canvas id="covid_bol_chart2"></canvas>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <canvas id="covid_bol_chart3"></canvas>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col">
+            <canvas id="covid_bol_chart4"></canvas>
+        </div>
+    </div>
+
+
+
+
+</div>
+
+<script>
+    var borderW = 2;
+    var fontSize = 14;
+    var title_font_size = 30;
+    console.log('in covid_bol_chart');
+
+    var cv = document.getElementById('covid_bol_chart');
+    var ctx = cv.getContext('2d');
+    var chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ template_labels | tojson }},
+            datasets: [
+            {
+                label: "US confirmed",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_arr }},
+                backgroundColor: "#3399ff",
+                borderColor: "#3399ff",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths",
+                yAxisID: 'A',
+                data: {{ arg_us_death_arr }},
+                backgroundColor: "#000066",
+                borderColor: "#000066",
+                borderWidth: 2,
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US confirmed increased",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_inc_arr }},
+                backgroundColor: "#33cc33",
+                borderColor: "#33cc33",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths increased",
+                yAxisID: 'A',
+                data: {{ arg_us_death_inc_arr }},
+                backgroundColor: "#087F4B",
+                borderColor: "#087F4B",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "All Employees, Total Nonfarm",
+                yAxisID: 'B',
+                data: {{ arg_employee_arr }},
+                backgroundColor: "#FFC300",
+                borderColor: "#FFC300",
+                fill: false,
+            },
+            {
+                label: "Job Openings - Total Non-farm",
+                yAxisID: 'B',
+                data: {{ arg_jobopen_arr }},
+                backgroundColor: "#DAF7A6",
+                borderColor: "#8C1806",
+                fill: false,
+            },
+            {
+                label: "Unemployment Level - Job Losers on Layoff",
+                yAxisID: 'B',
+                data: {{ arg_jobloose_arr }},
+                backgroundColor: "#C70039",
+                borderColor: "#C70039",
+                fill: false,
+            },
+            ]
+        },
+        options: {
+
+            title: {
+                display: true,
+                text: 'Covid-19  and Job Market',
+                font: {
+                        size: 40
+                    },
+            },
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        unit: 'month'
+                    }
+                }],
+               yAxes: [{
+                  id: 'A',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Confirmed Cases/Deaths'
+                  },
+                  type: 'linear',
+                  position: 'left',
+                  label: 'Label A',
+                }, {
+                  id: 'B',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Thousands'
+                  },
+                  type: 'linear',
+                  position: 'right',
+                  label: 'Label B',
+               }]
+            },
+            legend: {
+                position: 'right',
+                align: 'start',
+                labels: {
+                    font: {
+                        size: fontSize
+                    }
+                },
+                onHover: function(e) {
+                    e.target.style.cursor = 'pointer';
+                }
+            },
+            hover: {
+                onHover: function(e) {
+                    var point = this.getElementAtEvent(e);
+                    if (point.length) e.target.style.cursor = 'pointer';
+                    else e.target.style.cursor = 'default';
+                }
+            }
+        },
+    });
+
+    var cv2 = document.getElementById('covid_bol_chart2');
+    var ctx2 = cv2.getContext('2d');
+    var chart2 = new Chart(ctx2, {
+        type: 'line',
+        data: {
+            labels: {{ template_labels | tojson }},
+            datasets: [
+            {
+                label: "US confirmed",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_arr }},
+                backgroundColor: "#3399ff",
+                borderColor: "#3399ff",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths",
+                yAxisID: 'A',
+                data: {{ arg_us_death_arr }},
+                backgroundColor: "#000066",
+                borderColor: "#000066",
+                borderWidth: 2,
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US confirmed increased",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_inc_arr }},
+                backgroundColor: "#33cc33",
+                borderColor: "#33cc33",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths increased",
+                yAxisID: 'A',
+                data: {{ arg_us_death_inc_arr }},
+                backgroundColor: "#087F4B",
+                borderColor: "#087F4B",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "Overall",
+                yAxisID: 'B',
+                data: {{ arg_unrate_arr }},
+                backgroundColor: "#FFC300",
+                borderColor: "#FFC300",
+                fill: false,
+            },
+            {
+                label: "Management, Professional, and Related Occupations",
+                yAxisID: 'B',
+                data: {{ arg_unrate_arr1 }},
+                backgroundColor: "#FF5733",
+                borderColor: "#FF5733",
+                fill: false,
+            },
+            {
+                label: "Service",
+                yAxisID: 'B',
+                data: {{ arg_unrate_arr2 }},
+                backgroundColor: "#DAF7A6",
+                borderColor: "#8C1806",
+                fill: false,
+            },
+            {
+                label: "Sales and Office Occupations",
+                yAxisID: 'B',
+                data: {{ arg_unrate_arr3 }},
+                backgroundColor: "#C70039",
+                borderColor: "#C70039",
+                fill: false,
+            },
+            {
+                label: "Natural Resources, Construction, and Maintenance Occupations",
+                yAxisID: 'B',
+                data: {{ arg_unrate_arr4 }},
+                backgroundColor: "#099535",
+                borderColor: "#099535",
+                fill: false,
+            },
+            {
+                label: "Production, Transportation and Material Moving Occupations",
+                yAxisID: 'B',
+                data: {{ arg_unrate_arr5 }},
+                backgroundColor: "#a914ee",
+                borderColor: "#a914ee",
+                fill: false,
+            },
+            ]
+        },
+        options: {
+
+            title: {
+                display: true,
+                text: 'Covid-19  and Unemployment rate by occupation',
+                font: {
+                        size: title_font_size
+                    },
+            },
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        unit: 'month'
+                    }
+                }],
+               yAxes: [{
+                  id: 'A',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Confirmed Cases/Deaths'
+                  },
+                  type: 'linear',
+                  position: 'left',
+                  label: 'Label A',
+                }, {
+                  id: 'B',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'percent'
+                  },
+                  type: 'linear',
+                  position: 'right',
+                  label: 'Label B',
+               }]
+            },
+            legend: {
+                position: 'right',
+                align: 'start',
+                labels: {
+                    font: {
+                        size: fontSize
+                    }
+                },
+                onHover: function(e) {
+                    e.target.style.cursor = 'pointer';
+                }
+            },
+            hover: {
+                onHover: function(e) {
+                    var point = this.getElementAtEvent(e);
+                    if (point.length) e.target.style.cursor = 'pointer';
+                    else e.target.style.cursor = 'default';
+                }
+            }
+        },
+    });
+
+    var cv3 = document.getElementById('covid_bol_chart3');
+    var ctx3 = cv3.getContext('2d');
+    var chart3 = new Chart(ctx3, {
+        type: 'line',
+        data: {
+            labels: {{ template_labels | tojson }},
+            datasets: [
+            {
+                label: "US confirmed",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_arr }},
+                backgroundColor: "#3399ff",
+                borderColor: "#3399ff",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths",
+                yAxisID: 'A',
+                data: {{ arg_us_death_arr }},
+                backgroundColor: "#000066",
+                borderColor: "#000066",
+                borderWidth: 2,
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US confirmed increased",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_inc_arr }},
+                backgroundColor: "#33cc33",
+                borderColor: "#33cc33",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths increased",
+                yAxisID: 'A',
+                data: {{ arg_us_death_inc_arr }},
+                backgroundColor: "#087F4B",
+                borderColor: "#087F4B",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "Air Transportation",
+                yAxisID: 'B',
+                data: {{ arg_employee_arr1 }},
+                backgroundColor: "#FFC300",
+                borderColor: "#FFC300",
+                fill: false,
+            },
+            {
+                label: "Health Care",
+                yAxisID: 'B',
+                data: {{ arg_employee_arr2 }},
+                backgroundColor: "#FF5733",
+                borderColor: "#FF5733",
+                fill: false,
+            },
+            {
+                label: "Educational Services",
+                yAxisID: 'B',
+                data: {{ arg_employee_arr3 }},
+                backgroundColor: "#DAF7A6",
+                borderColor: "#8C1806",
+                fill: false,
+            },
+            {
+                label: "Arts, Entertainment, and Recreation",
+                yAxisID: 'B',
+                data: {{ arg_employee_arr4 }},
+                backgroundColor: "#C70039",
+                borderColor: "#C70039",
+                fill: false,
+            },
+            ]
+        },
+        options: {
+
+            title: {
+                display: true,
+                text: 'Covid-19  and Employee rate by occupation',
+                font: {
+                        size: title_font_size
+                },
+            },
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        unit: 'month'
+                    }
+                }],
+               yAxes: [{
+                  id: 'A',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Confirmed Cases/Deaths'
+                  },
+                  type: 'linear',
+                  position: 'left',
+                  label: 'Label A',
+                }, {
+                  id: 'B',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Thousands of person'
+                  },
+                  type: 'linear',
+                  position: 'right',
+                  label: 'Label B',
+               }]
+            },
+            legend: {
+                position: 'right',
+                align: 'start',
+                labels: {
+                    font: {
+                        size: fontSize
+                    }
+                },
+                onHover: function(e) {
+                    e.target.style.cursor = 'pointer';
+                }
+            },
+            hover: {
+                onHover: function(e) {
+                    var point = this.getElementAtEvent(e);
+                    if (point.length) e.target.style.cursor = 'pointer';
+                    else e.target.style.cursor = 'default';
+                }
+            }
+        },
+    });
+
+    var cv4 = document.getElementById('covid_bol_chart4');
+    var ctx4 = cv4.getContext('2d');
+    var chart4 = new Chart(ctx4, {
+        type: 'line',
+        data: {
+            labels: {{ template_labels | tojson }},
+            datasets: [
+            {
+                label: "US confirmed",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_arr }},
+                backgroundColor: "#3399ff",
+                borderColor: "#3399ff",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths",
+                yAxisID: 'A',
+                data: {{ arg_us_death_arr }},
+                backgroundColor: "#000066",
+                borderColor: "#000066",
+                borderWidth: 2,
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US confirmed increased",
+                yAxisID: 'A',
+                data: {{ arg_us_confirmed_inc_arr }},
+                backgroundColor: "#33cc33",
+                borderColor: "#33cc33",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "US deaths increased",
+                yAxisID: 'A',
+                data: {{ arg_us_death_inc_arr }},
+                backgroundColor: "#087F4B",
+                borderColor: "#087F4B",
+                fill: false,
+                type: 'bar',
+            },
+            {
+                label: "Restaurants and Other Eating Places",
+                yAxisID: 'B',
+                data: {{ arg_retail_arr1 }},
+                backgroundColor: "#FFC300",
+                borderColor: "#FFC300",
+                fill: false,
+            },
+            {
+                label: "Electronic Shopping and Mail-order Houses",
+                yAxisID: 'B',
+                data: {{ arg_retail_arr2 }},
+                backgroundColor: "#FF5733",
+                borderColor: "#FF5733",
+                fill: false,
+            },
+            {
+                label: "Grocery Stores",
+                yAxisID: 'B',
+                data: {{ arg_retail_arr3 }},
+                backgroundColor: "#DAF7A6",
+                borderColor: "#8C1806",
+                fill: false,
+            },
+            {
+                label: "Health and Personal Care Stores",
+                yAxisID: 'B',
+                data: {{ arg_retail_arr4 }},
+                backgroundColor: "#C70039",
+                borderColor: "#C70039",
+                fill: false,
+            },
+            ]
+        },
+        options: {
+
+            title: {
+                display: true,
+                text: 'Covid-19  and Retail Sales',
+                font: {
+                        size: title_font_size
+                },
+            },
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    time: {
+                        unit: 'month'
+                    }
+                }],
+               yAxes: [{
+                  id: 'A',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Confirmed Cases/Deaths'
+                  },
+                  type: 'linear',
+                  position: 'left',
+                  label: 'Label A',
+                }, {
+                  id: 'B',
+                  scaleLabel: {
+                    display: true,
+                    labelString: 'Millions of Dollars'
+                  },
+                  type: 'linear',
+                  position: 'right',
+                  label: 'Label B',
+               }]
+            },
+            legend: {
+                position: 'right',
+                align: 'start',
+                labels: {
+                    font: {
+                        size: fontSize
+                    }
+                },
+                onHover: function(e) {
+                    e.target.style.cursor = 'pointer';
+                }
+            },
+            hover: {
+                onHover: function(e) {
+                    var point = this.getElementAtEvent(e);
+                    if (point.length) e.target.style.cursor = 'pointer';
+                    else e.target.style.cursor = 'default';
+                }
+            }
+        },
+    });
+
+</script>
+
+<!--{% endblock %}-->
