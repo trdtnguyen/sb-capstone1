@@ -5,7 +5,7 @@ Updated: Added story telling [Slide deck](https://docs.google.com/presentation/d
 ## Quick Start
 Clone the repository
 ```
-$ git clone 
+$ git clone https://github.com/trdtnguyen/sb-capstone1
 $ cd sb-capstone1
 ```
 ### Running in docker container:
