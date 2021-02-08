@@ -1,5 +1,36 @@
 # Correlation between Covid-19 and Economic
 Updated: Added story telling [Slide deck](https://docs.google.com/presentation/d/1af-YRE0olJoWg0lmaxU_24MULDHB_1eP6vQqhRHNPLw/edit?usp=sharing) that walks you through the progress of building this project.
+## Installation
+Clone the repository
+```
+$ git clone 
+$ cd sb-capstone1
+```
+### Running in docker container:
+```
+$ docker-compose build && docker-compose up
+```
+### Running in your local machine:
+
+***Step 1: Create and activate a virtual envirionment***
+```
+$ virtualenv -p /usr/bin/python3.8 vevn
+$ source venv/bin/activate
+```
+
+Note: To avoid Python version error due to differences of python version in  Spark driver and Spark worker, following below notes:
+* Ensure your python in Spark has the same version as the one in your veritual environment.
+* Ensure `PYSPARK_PYTHON` and `PYSPARK_DRIVER_PYTHON` point to the same python bin.
+
+***Step 2: Install Python packages***
+```
+$ (venv) pip3 install -r requirements.txt
+```
+***Step 3: Setup Database***
+This project use mysql as the back-end database. 
+```
+$ 
+```
 
 ## Techniques
 This section list common Data Engineering techniques and general programming techniques used in this project.
