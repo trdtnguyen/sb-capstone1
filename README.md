@@ -1,6 +1,6 @@
 # Correlation between Covid-19 and Economic
 Updated: Added story telling [Slide deck](https://docs.google.com/presentation/d/1af-YRE0olJoWg0lmaxU_24MULDHB_1eP6vQqhRHNPLw/edit?usp=sharing) that walks you through the progress of building this project.
-## Installation
+## Quick Start
 Clone the repository
 ```
 $ git clone 
