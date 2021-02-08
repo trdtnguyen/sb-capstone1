@@ -83,10 +83,12 @@ This section list common Data Engineering techniques and general programming tec
 * Using MySQL as the back-end RDBMS for data wareshouse with star schema.
 * The front-end apps (ETL tasks) use ODBC connector (for pyspark) and SqlAchemy for pandas.
 * Data transform in ETL tasks combine both SQL and pyspark's APIs.
-#### Restful API, Tablue, Jupyter notebook
+#### Front-end techniques: Flask, jQuery, Chart.js, HTML/javascript/CSS
 * Project support various front-end interfaces such as RESTful API using Flask, Tablue, and Jupyter notebook
+* Drawing charts using Chart.js + jQuery
+* 
 #### Docker, docker-compose
-* Packing airflow, spark, mysql into one docker container
+* Packing flask, airflow, spark, mysql into one docker container
 * App image wait for database image ready
 
 #### Python programming
