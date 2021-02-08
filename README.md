@@ -85,29 +85,29 @@ Detail on pandas Datareader remote resources could be found [here](https://panda
 
 Below is the summary of data sources in this project:
 
-Method | Source | Categories | Feature/Key | Frequency | Description
---------------|--------|-----------|-----------|-------|-----------------
-API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases US | daily | Covid-19 confirmed cases in the US
-API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths US | daily | Covid-19 deaths in the US
-API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases Global | daily | Covid-19 confirmed in the world
-API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths cases Global | daily | Covid-19 deaths in the world
-PD Datareader | fred   | Financial | nasdaq100 | daily | NASDAQ 100 Index
-PD Datareader | fred   | Financial | sp500 | daily | S&P 500 Index
-PD Datareader | fred   | Financial | djia | daily | Dow Jones Industrial Average
-PD Datareader | fred   | Labor market | payms | monthly | All Employees, Total Nonfarm
-PD Datareader | fred   | Labor market | [CES4348100001](https://fred.stlouisfed.org/series/CES4348100001) | monthly | All Employees, Air Transportation
-PD Datareader | fred   | Labor market | [CES6562000101](https://fred.stlouisfed.org/series/CES6562000101) | monthly | All Employees, Health Care
-PD Datareader | fred   | Labor market | [CES6561000001](https://fred.stlouisfed.org/series/CES6561000001) | monthly | All Employees, Educational Services
-PD Datareader | fred   | Labor market | [CES7071000001](https://fred.stlouisfed.org/series/CES7071000001) | monthly | All Employees, Arts, Entertainment, and Recreation
-PD Datareader | fred   | Labor market | [unrate](https://fred.stlouisfed.org/series/UNRATE) | monthly | Unemployment Rate
-PD Datareader | fred   | Labor market | [jtsjol](https://fred.stlouisfed.org/series/JTSJOL) | monthly | Job Openings: Total Nonfarm
-PD Datareader | fred   | Labor market | [LNS13023653](https://fred.stlouisfed.org/series/LNS13023653) | monthly | Unemployment Level - Job Losers on Layoff
-PD Datareader | fred   | Production & Business Activity  | [VMTD11](https://fred.stlouisfed.org/series/VMTD11) | monthly | Vehicle Miles Traveled
-PD Datareader | fred   | Production & Business Activity  | [AIRRPMTSID11](https://fred.stlouisfed.org/series/AIRRPMTSID11) | monthly | Air Revenue Passenger Miles
-PD Datareader | fred   | Production & Business Activity  | [MRTSSM7225USN](https://fred.stlouisfed.org/series/MRTSSM7225USN) | monthly | Retail Sales: Restaurants and Other Eating Places
-PD Datareader | fred   | Production & Business Activity  | [MRTSSM4541USS](https://fred.stlouisfed.org/series/MRTSSM4541USS) | monthly | Retail Sales: Electronic Shopping and Mail-order Houses
-PD Datareader | fred   | Production & Business Activity  | [MRTSSM4451USS](https://fred.stlouisfed.org/series/MRTSSM4451USS) | monthly | Retail Sales: Grocery Stores
-PD Datareader | fred   | Production & Business Activity  | [MRTSSM446USS](https://fred.stlouisfed.org/series/MRTSSM446USS) | monthly | Retail Sales: Health and Personal Care Stores
+Method | Source | Categories | Feature/Key | Frequency | Unit | Description
+--------------|--------|-----------|-----------|-------|--------|---------
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases US | daily | case | Covid-19 confirmed cases in the US
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths US | daily | case | Covid-19 deaths in the US
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Confirmed cases Global | daily | case | Covid-19 confirmed in the world
+API | [JHU CSSE](https://github.com/CSSEGISandData/COVID-19/tree/master/csse_covid_19_data)   | Covid | Deaths cases Global | daily | case |Covid-19 deaths in the world
+PD Datareader | fred   | Financial | nasdaq100 | daily | N/A |NASDAQ 100 Index
+PD Datareader | fred   | Financial | sp500 | daily | N/A |S&P 500 Index
+PD Datareader | fred   | Financial | djia | daily | N/A |Dow Jones Industrial Average
+PD Datareader | fred   | Labor market | payems | monthly | Thousands of person |All Employees, Total Nonfarm
+PD Datareader | fred   | Labor market | [CES4348100001](https://fred.stlouisfed.org/series/CES4348100001) | monthly | Thousands of person |All Employees, Air Transportation
+PD Datareader | fred   | Labor market | [CES6562000101](https://fred.stlouisfed.org/series/CES6562000101) | monthly | Thousands of person |All Employees, Health Care
+PD Datareader | fred   | Labor market | [CES6561000001](https://fred.stlouisfed.org/series/CES6561000001) | monthly | Thousands of person |All Employees, Educational Services
+PD Datareader | fred   | Labor market | [CES7071000001](https://fred.stlouisfed.org/series/CES7071000001) | monthly | Thousands of person |All Employees, Arts, Entertainment, and Recreation
+PD Datareader | fred   | Labor market | [unrate](https://fred.stlouisfed.org/series/UNRATE) | monthly | Percent | Unemployment Rate
+PD Datareader | fred   | Labor market | [jtsjol](https://fred.stlouisfed.org/series/JTSJOL) | monthly | Level in Thousands | Job Openings: Total Nonfarm
+PD Datareader | fred   | Labor market | [LNS13023653](https://fred.stlouisfed.org/series/LNS13023653) | monthly | Thousands of Persons | Unemployment Level - Job Losers on Layoff
+PD Datareader | fred   | Production & Business Activity  | [VMTD11](https://fred.stlouisfed.org/series/VMTD11) | monthly | Millions | Vehicle Miles Traveled
+PD Datareader | fred   | Production & Business Activity  | [AIRRPMTSID11](https://fred.stlouisfed.org/series/AIRRPMTSID11) | monthly | Thousands | Air Revenue Passenger Miles
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM7225USN](https://fred.stlouisfed.org/series/MRTSSM7225USN) | monthly | Millions of Dollars | Retail Sales: Restaurants and Other Eating Places
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM4541USS](https://fred.stlouisfed.org/series/MRTSSM4541USS) | monthly | Millions of Dollars | Retail Sales: Electronic Shopping and Mail-order Houses
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM4451USS](https://fred.stlouisfed.org/series/MRTSSM4451USS) | monthly | Millions of Dollars | Retail Sales: Grocery Stores
+PD Datareader | fred   | Production & Business Activity  | [MRTSSM446USS](https://fred.stlouisfed.org/series/MRTSSM446USS) | monthly | Millions of Dollars | Retail Sales: Health and Personal Care Stores
 
 
 
