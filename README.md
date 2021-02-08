@@ -98,15 +98,15 @@ This section list common Data Engineering techniques and general programming tec
 * Logging
 * Unit test using pytest.
 
-
-## 1. [Problem Definition](https://github.com/trdtnguyen/sb-capstone1/wiki/Problem-Definition)
-## 2. [Expected Results](https://github.com/trdtnguyen/sb-capstone1/wiki/Expected-Result)
-## 3. Data model()
+Project details:
+* [Problem Definition](https://github.com/trdtnguyen/sb-capstone1/wiki/Problem-Definition)
+* [Expected Results](https://github.com/trdtnguyen/sb-capstone1/wiki/Expected-Result)
+## 3. Data model(https://github.com/trdtnguyen/sb-capstone1/wiki/Data-Model)
 [ERD chart](sql/erd.pdf)
 
-## 4. [Building the datasets (Extract)](https://github.com/trdtnguyen/sb-capstone1/wiki/Dataset)
-## 5. [Transform Data] (https://github.com/trdtnguyen/sb-capstone1/wiki/Transform)
-## 6. [Testing] (https://github.com/trdtnguyen/sb-capstone1/wiki/Testing)
-## 6.[Trouble Shootings] (https://github.com/trdtnguyen/sb-capstone1/wiki/Trouble-Shooting)
+* [Extract](https://github.com/trdtnguyen/sb-capstone1/wiki/Dataset)
+* [Transform Data](https://github.com/trdtnguyen/sb-capstone1/wiki/Transform)
+* [Testing](https://github.com/trdtnguyen/sb-capstone1/wiki/Testing)
+* [Trouble Shootings](https://github.com/trdtnguyen/sb-capstone1/wiki/Trouble-Shooting)
 
 
