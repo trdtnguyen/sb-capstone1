@@ -4,10 +4,11 @@ Self ETL for developer
 __version__ = '0.2'
 __author__ = 'Dat Nguyen'
 
-from tasks.Consolidate import Consolidation
+
 from tasks.Covid import Covid
 from tasks.Stock import Stock
 from tasks.BOL import BOL
+from tasks.Consolidate import Consolidation
 from tasks.GlobalUtil import GlobalUtil
 from pyspark.sql import SparkSession
 

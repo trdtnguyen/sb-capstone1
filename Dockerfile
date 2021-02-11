@@ -45,7 +45,7 @@ COPY sql sql
 COPY tasks tasks
 COPY db db
 COPY data data
-COPY test test
+COPY tests tests
 
 COPY jars jars
 COPY jars/* spark-3.0.1-bin-hadoop2.7/jars/ 
