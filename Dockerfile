@@ -25,13 +25,18 @@ RUN pip install  mysql-connector-python
 RUN pip install  pymysql
 
 # Core project
-RUN pip install  pyspark
-RUN pip install  pandas
-RUN pip install  pandas-datareader
+COPY requirements.txt requirements.txt
+RUN pip install -r requirements.txt
+#RUN pip install  pyspark
+#RUN pip install  pandas
+#RUN pip install  pandas-datareader
+#RUN pip install  bs4
+#RUN pip install  sqlalchemy
+#RUN pip install  pytest
+
+# front-end
+RUN pip install  Flask
 RUN pip install  jupyter
-RUN pip install  bs4
-RUN pip install  sqlalchemy
-RUN pip install  pytest
 
 COPY setup.sh /root/airflow/setup.sh
 RUN chmod +x setup.sh
@@ -43,6 +48,7 @@ COPY config.cnf config.cnf
 COPY dags dags
 COPY sql sql
 COPY tasks tasks
+COPY flaskapp flaskapp
 COPY db db
 COPY data data
 COPY tests tests

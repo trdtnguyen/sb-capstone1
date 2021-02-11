@@ -1,10 +1,10 @@
 import setuptools
 
 setuptools.setup(
-    name="covidcor", # Replace with your own username
+    name="covidcor",
     version="0.0.1",
     author="trdtnguyen",
-    author_email="trdtnguyen@example.com",
+    author_email="trauconnguyen@gmail.com",
     description="Covid Correlated Project",
     long_description="Covid Correlated Project",
     long_description_content_type="text/markdown",
