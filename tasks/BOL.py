@@ -115,7 +115,7 @@ class BOL:
         end_date_str = end_date.strftime('%Y-%m-%d')
         insert_list = []
         series_ids = self.GU.rows_to_array(dim_df, 'series_id')
-
+        
         bol_df = data.DataReader(series_ids, 'fred', start_date_str, end_date_str)
         for i, row in bol_df.iterrows():
             date = i

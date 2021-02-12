@@ -22,7 +22,7 @@ services:
             - db
         init: true
         ports:
-            - "192.168.0.2:8082:8080"
+            - "8084:8080"
         environment:
             - PYTHONPATH=/root/airflow
             - COVID_PROJECT_PATH=/root/airflow 

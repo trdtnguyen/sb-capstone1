@@ -24,6 +24,10 @@ RUN export PATH=$PATH:$SPARK_HOME/bin:$SPARK_HOME/sbin
 RUN pip install  mysql-connector-python
 RUN pip install  pymysql
 
+#RUN add-apt-repository "deb http://repo.mysql.com/apt/ubuntu/ bionic mysql-8.0"
+#RUN apt-get install mysql-client -y
+RUN apt-get install -y default-mysql-client
+
 # Core project
 COPY requirements.txt requirements.txt
 RUN pip install -r requirements.txt
@@ -32,7 +36,7 @@ RUN pip install -r requirements.txt
 #RUN pip install  pandas-datareader
 #RUN pip install  bs4
 #RUN pip install  sqlalchemy
-#RUN pip install  pytest
+RUN pip install  pytest
 
 # front-end
 RUN pip install  Flask
