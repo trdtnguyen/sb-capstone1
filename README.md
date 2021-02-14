@@ -15,10 +15,6 @@ Clone the repository
 $ git clone https://github.com/trdtnguyen/sb-capstone1
 $ cd sb-capstone1
 ```
-### Running in docker container:
-```
-$ docker-compose build && docker-compose up
-```
 ### Running in your local machine:
 
 ***Step 1: Create and activate a virtual envirionment***
@@ -73,8 +69,19 @@ Start Flask web server
 ```
 $ python flaskapp/app.py
 ```
-***Step 5: Access dashboard***
+***Step 6: Access dashboard***
 After the flask app started, open your browser with url: `http://<API_HOST>:<API_PORT>` for example `http://192.168.0.2:8082/`. 
+
+### Running in docker container:
+```
+$ docker-compose build && docker-compose up
+```
+In this current version, docker-compose up covers step 1 - step 3 of steps in running in a local machine. 
+
+We could do the same step 4 - step 6 inside docker container.
+```
+$ docker exec -it airflow bash
+```
 
 
 ## Techniques
