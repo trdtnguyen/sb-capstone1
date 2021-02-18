@@ -124,7 +124,7 @@ This section list common Data Engineering techniques and general programming tec
 * [Problem Definition](https://github.com/trdtnguyen/sb-capstone1/wiki/Problem-Definition)
 * [Expected Results](https://github.com/trdtnguyen/sb-capstone1/wiki/Expected-Result)
 * [Data model](https://github.com/trdtnguyen/sb-capstone1/wiki/Data-Model)
-* [ERD chart](sql/erd.pdf)
+* [ERD chart grouped](docs/erd_group.pdf) | [ERD raw](docs/erd_draw.pdf)
 * [Extract](https://github.com/trdtnguyen/sb-capstone1/wiki/Dataset)
 * [Transform Data](https://github.com/trdtnguyen/sb-capstone1/wiki/Transform)
 * [Testing](https://github.com/trdtnguyen/sb-capstone1/wiki/Testing)
