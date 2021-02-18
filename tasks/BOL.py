@@ -58,7 +58,7 @@ class BOL:
     """
     Read list of interested feature from dim table then extract each feature data
     """
-    def extract_BOL(self):
+    def extract_BOL(self, end_date=datetime.now()):
         conn = self.conn
         logger = self.logger
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['BOL_SERIES_FACT_TABLE_NAME']
@@ -77,7 +77,7 @@ class BOL:
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
-        end_date = datetime.now()
+        # end_date = datetime.now()
         fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
 
         if is_resume_extract:
@@ -115,7 +115,7 @@ class BOL:
         end_date_str = end_date.strftime('%Y-%m-%d')
         insert_list = []
         series_ids = self.GU.rows_to_array(dim_df, 'series_id')
-        
+
         bol_df = data.DataReader(series_ids, 'fred', start_date_str, end_date_str)
         for i, row in bol_df.iterrows():
             date = i

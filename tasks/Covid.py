@@ -79,7 +79,7 @@ class Covid:
 
         self.GU = GlobalUtil.instance()
 
-    def extract_us(self):
+    def extract_us(self, end_date=datetime.now()):
         conn = self.conn
         logger = self.logger
         RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_RAW_TABLE_NAME']
@@ -110,44 +110,52 @@ class Covid:
         ncols2 = len(death_us_df.columns)
         # death_us_df.describe().show()
 
-        # Get latest date from raw table
-        begin_date_str = death_us_df.schema.names[date_col]
-        begin_date = convert_date(begin_date_str)
-        end_date_str = death_us_df.schema.names[-1]
-        end_date = convert_date(end_date_str)
-
         #######################################
         # Step 2 Read from database to determine the last written data point
         #######################################
 
-        # driver_name = 'com.mysql.jdbc.Driver' # Old driver
-
-        # print('Read from database ...')
         latest_df, is_resume_extract, latest_date = self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
-        # print(f'is_resume_extract={is_resume_extract}')
-        if is_resume_extract:
-            if latest_date >= end_date:
-                print(f'The system has updated data up to {end_date}. No further extract needed.')
-                return
-            else:
-                ### Resuming extract
-                start_index = date_col + (end_date.day - latest_date.day)
-                confirmed_us_df = confirmed_us_df.select(
-                    confirmed_us_df['UID'], confirmed_us_df['iso2'], confirmed_us_df['iso3'],
-                    confirmed_us_df['code3'], confirmed_us_df['FIPS'], confirmed_us_df['Admin2'],
-                    confirmed_us_df['Province_State'], confirmed_us_df['Country_Region'],
-                    confirmed_us_df['Lat'], confirmed_us_df['Long_'],
-                    confirmed_us_df['Combined_Key'],
-                    *(confirmed_us_df.columns[(start_index - 1):])
-                )
-                death_us_df = death_us_df.select(
-                    death_us_df['UID'], death_us_df['iso2'], death_us_df['iso3'],
-                    death_us_df['code3'], death_us_df['FIPS'], death_us_df['Admin2'],
-                    death_us_df['Province_State'], death_us_df['Country_Region'],
-                    death_us_df['Lat'], death_us_df['Long_'],
-                    death_us_df['Combined_Key'], death_us_df['Population'],
-                    *(death_us_df.columns[start_index:])
-                )
+
+        # Dealing with dates
+        # DEFAULT_START_DATE  < begin_date <= latest_date <= end_date <= max_end_date
+        #                         date_col                                   len-1
+        # date from death_us_df.schema.names[-1] is the largest end date the data source could have
+        begin_date_str = death_us_df.schema.names[date_col]
+        begin_date = convert_date(begin_date_str)
+        max_end_date_str = death_us_df.schema.names[-1]
+        max_end_date = convert_date(max_end_date_str)
+
+        if end_date > max_end_date:
+            # we only have what the data set could provide
+            end_date = max_end_date
+        if latest_date < begin_date:
+            latest_date = begin_date
+
+        if latest_date >= end_date:
+            print(f'The system has updated data up to {end_date}. No further extract needed.')
+            return
+        else:
+            ### Resuming extract
+            diff1 = latest_date - begin_date
+
+            start_index = date_col + (latest_date - begin_date).days
+            end_index = date_col + (end_date - begin_date).days
+            confirmed_us_df = confirmed_us_df.select(
+                confirmed_us_df['UID'], confirmed_us_df['iso2'], confirmed_us_df['iso3'],
+                confirmed_us_df['code3'], confirmed_us_df['FIPS'], confirmed_us_df['Admin2'],
+                confirmed_us_df['Province_State'], confirmed_us_df['Country_Region'],
+                confirmed_us_df['Lat'], confirmed_us_df['Long_'],
+                confirmed_us_df['Combined_Key'],
+                *(confirmed_us_df.columns[(start_index - 1):end_index])
+            )
+            death_us_df = death_us_df.select(
+                death_us_df['UID'], death_us_df['iso2'], death_us_df['iso3'],
+                death_us_df['code3'], death_us_df['FIPS'], death_us_df['Admin2'],
+                death_us_df['Province_State'], death_us_df['Country_Region'],
+                death_us_df['Lat'], death_us_df['Long_'],
+                death_us_df['Combined_Key'], death_us_df['Population'],
+                *(death_us_df.columns[start_index:])
+            )
 
         #########
         ### Update latest date

@@ -37,24 +37,24 @@ spark = SparkSession \
 spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 
 etl_covid = True
-etl_stock = True
-etl_bol = True
-etl_consolid = True
-
+etl_stock = False
+etl_bol = False
+etl_consolid = False
+query_date = datetime(2021, 2, 9)
 #### Covid
 if etl_covid:
     covid = Covid(spark)
-    covid.extract_us()
-    covid.transform_raw_to_fact_us()
-    covid.aggregate_fact_to_monthly_fact_us()
-
-    covid.transform_raw_to_dim_country()
-    covid.extract_global()
-    covid.transform_raw_to_fact_global()
-    covid.aggregate_fact_to_monthly_fact_global()
-    # #
-    covid.aggregate_fact_to_sum_fact()
-    covid.aggregate_fact_to_sum_monthly_fact()
+    covid.extract_us(query_date)
+    # covid.transform_raw_to_fact_us()
+    # covid.aggregate_fact_to_monthly_fact_us()
+    #
+    # covid.transform_raw_to_dim_country()
+    # covid.extract_global()
+    # covid.transform_raw_to_fact_global()
+    # covid.aggregate_fact_to_monthly_fact_global()
+    # # #
+    # covid.aggregate_fact_to_sum_fact()
+    # covid.aggregate_fact_to_sum_monthly_fact()
 
 #### Stock
 if etl_stock:
