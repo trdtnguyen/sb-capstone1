@@ -5,6 +5,7 @@ DROP TABLE IF EXISTS covid19_us_dim;
 DROP TABLE IF EXISTS covid19_global_monthly_fact;
 DROP TABLE IF EXISTS covid19_global_fact;
 DROP TABLE IF EXISTS country_dim;
+DROP TABLE IF EXISTS covid19_global_dim;
 DROP TABLE IF EXISTS covid19_global_raw;
 DROP TABLE IF EXISTS covid19_us_raw;
 DROP TABLE IF EXISTS covid19_sum_fact;
@@ -41,6 +42,7 @@ INSERT INTO latest_data VALUES("covid19_global_monthly_fact", @default_date);
 INSERT INTO latest_data VALUES("covid19_global_fact", @default_date);
 INSERT INTO latest_data VALUES("country_dim", @default_date);
 INSERT INTO latest_data VALUES("covid19_global_raw", @default_date);
+INSERT INTO latest_data VALUES("covid19_global_dim", @default_date);
 INSERT INTO latest_data VALUES("covid19_us_raw", @default_date);
 INSERT INTO latest_data VALUES("covid19_sum_fact", @default_date);
 INSERT INTO latest_data VALUES("covid19_sum_monthly_fact", @default_date);
@@ -117,7 +119,8 @@ CREATE TABLE IF NOT EXISTS covid19_us_fact (
     confirmed_inc_pct DECIMAL(18, 5),
     deaths_inc_pct DECIMAL(18, 5),
     
-    PRIMARY KEY(dateid, Province_State)
+    PRIMARY KEY(dateid, Province_State),
+    FOREIGN KEY (Province_State) REFERENCES covid19_us_dim(Province_State)
 );
 
 CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
@@ -133,8 +136,9 @@ CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
     deaths_inc int,
     confirmed_inc_pct DECIMAL(18, 5),
     deaths_inc_pct DECIMAL(18, 5),
-    
-    PRIMARY KEY(dateid, Province_State)
+
+    PRIMARY KEY(dateid, Province_State),
+    FOREIGN KEY (Province_State) REFERENCES covid19_us_dim(Province_State)
 );
 
 
@@ -156,6 +160,13 @@ CREATE TABLE IF NOT EXISTS country_dim(
     PRIMARY KEY(code)
 );
 
+CREATE TABLE IF NOT EXISTS covid19_global_dim(
+    Country_Region VARCHAR(64), -- country
+    Lat double NOT NULL,
+    Long_ double NOT NULL,
+    PRIMARY KEY(Country_Region)
+);
+
 CREATE TABLE IF NOT EXISTS covid19_global_fact(
     dateid bigint NOT NULL,
     Country_Region VARCHAR(64) , -- country
@@ -167,7 +178,8 @@ CREATE TABLE IF NOT EXISTS covid19_global_fact(
     confirmed_inc_pct DECIMAL(18, 5),
     deaths_inc_pct DECIMAL(18, 5),
     
-    PRIMARY KEY(dateid, Country_Region)
+    PRIMARY KEY(dateid, Country_Region),
+    FOREIGN KEY(Country_Region) REFERENCES covid19_global_dim(Country_Region)
 );
 
 CREATE TABLE IF NOT EXISTS covid19_global_monthly_fact(
@@ -184,7 +196,8 @@ CREATE TABLE IF NOT EXISTS covid19_global_monthly_fact(
     confirmed_inc_pct DECIMAL(18, 5),
     deaths_inc_pct DECIMAL(18, 5),
     
-    PRIMARY KEY(dateid, Country_Region)
+    PRIMARY KEY(dateid, Country_Region),
+    FOREIGN KEY(Country_Region) REFERENCES covid19_global_dim(Country_Region)
 );
 
 CREATE TABLE IF NOT EXISTS covid19_sum_fact (
@@ -274,7 +287,8 @@ CREATE TABLE IF NOT EXISTS stock_price_fact(
     Volume double NOT NULL,
     adj_close double NOT NULL,
     
-    PRIMARY KEY(dateid, stock_ticker)
+    PRIMARY KEY(dateid, stock_ticker),
+    FOREIGN KEY (stock_ticker) REFERENCES stock_ticker_raw(ticker)
 );
 
 CREATE TABLE IF NOT EXISTS stock_index_monthly_fact(
@@ -304,7 +318,8 @@ CREATE TABLE IF NOT EXISTS stock_price_monthly_fact(
     Volume double NOT NULL,
     adj_close double NOT NULL,
 
-    PRIMARY KEY(dateid, stock_ticker)
+    PRIMARY KEY(dateid, stock_ticker),
+    FOREIGN KEY (stock_ticker) REFERENCES stock_ticker_raw(ticker)
 );
 
 CREATE TABLE IF NOT EXISTS bol_series_raw(
@@ -355,7 +370,8 @@ CREATE TABLE IF NOT EXISTS bol_series_fact(
     series_id VARCHAR(64) NOT NULL, -- matched with series_id from raw data
     date datetime NOT NULL, -- monthly
     value double,
-    PRIMARY KEY(dateid, series_id)
+    PRIMARY KEY(dateid, series_id),
+    FOREIGN KEY(series_id) REFERENCES bol_series_dim(series_id)
 );
 
 
@@ -427,6 +443,7 @@ CREATE TABLE IF NOT EXISTS covid_stock_bol_monthly_fact (
     sp500_score double,
     nasdaq100_score double,
     dowjones_score double,
-    PRIMARY KEY(dateid, bol_series_id)
+    PRIMARY KEY(dateid, bol_series_id),
+    FOREIGN KEY(bol_series_id) REFERENCES bol_series_dim(series_id)
 );
 
