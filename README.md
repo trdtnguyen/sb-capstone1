@@ -1,6 +1,9 @@
 # Correlation between Covid-19 and Economic
-This project provides ready-to-analyze datasets for Covid-19 and other related aspects in our daily life such as stock index, unemployment rate, job opennings, bussiness activities. We implement a full stack solution includes: (1) the front-end dashboard with Flask + jQuery, (2) ETL pipeline with Apache Spark + Python and Apache Airflow for scheduling ETL tasks and (3) MySQL as the back-end DBMS.
-![architecture](docs/flowchar.jpg?raw=true)
+This project provides ready-to-analyze datasets for Covid-19 and other related aspects in our daily life such as stock index, unemployment rate, job opennings, bussiness activities. We implement a full stack solution includes: (1) the front-end dashboard with Flask + jQuery, (2) ETL pipeline with Apache Spark + Python and Apache Airflow for scheduling ETL tasks and (3) MySQL as the back-end DBMS. The overall architecture is:
+
+![architecture](docs/flowchart.jpg?raw=true)
+
+And the expected results from FLask App would look like:
 
 ![covid stock](images/covid_stock1.jpg?raw=true)
 ![covid stock](images/covid_stock2.jpg?raw=true)
