@@ -154,7 +154,7 @@ class Covid:
                 death_us_df['Province_State'], death_us_df['Country_Region'],
                 death_us_df['Lat'], death_us_df['Long_'],
                 death_us_df['Combined_Key'], death_us_df['Population'],
-                *(death_us_df.columns[start_index:])
+                *(death_us_df.columns[start_index: end_index])
             )
 
         #########
