@@ -138,7 +138,7 @@ class Covid:
             ### Resuming extract
             diff1 = latest_date - begin_date
 
-            start_index = date_col + (latest_date - begin_date).days
+            start_index = date_col + (latest_date - begin_date).days + 1
             end_index = date_col + (end_date - begin_date).days
             confirmed_us_df = confirmed_us_df.select(
                 confirmed_us_df['UID'], confirmed_us_df['iso2'], confirmed_us_df['iso3'],
@@ -221,7 +221,7 @@ class Covid:
         self.GU.write_to_db(df, RAW_TABLE_NAME, logger)
         print('Done extract_us')
 
-    def extract_global(self):
+    def extract_global(self, end_date=datetime.now()):
         logger = self.logger
         RAW_TABLE_NAME = 'covid19_global_raw'
         is_resume_extract = False
@@ -246,11 +246,7 @@ class Covid:
         death_df = death_df.filter(death_df['Province/State'].isNull())
         death_df = death_df.drop(death_df['Province/State'])
 
-        # Get latest date from raw table
-        begin_date_str = death_df.schema.names[date_col]
-        begin_date = convert_date(begin_date_str)
-        end_date_str = death_df.schema.names[-1]
-        end_date = convert_date(end_date_str)
+
 
         COL_NAMES = ['Province_State', 'Country_Region', 'Lat', 'Long_'
                                                                 'date', 'confirmed', 'deaths']
@@ -259,26 +255,39 @@ class Covid:
         #######################################
         # print('Read from database ...')
         latest_df, is_resume_extract, latest_date = self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
-        latest_df = latest_df.cache()
-        latest_df.count()
+        #latest_df = latest_df.cache()
+        #latest_df.count()
 
-        if is_resume_extract:
-            if latest_date >= end_date:
-                print(f'The system has updated data up to {end_date}. No further extract needed.')
-                return
-            else:
-                ### Resuming extract
-                start_index = date_col + (latest_date.day - begin_date.day)
-                confirmed_df = confirmed_df.select(
-                    confirmed_df['Country/Region'],
-                    confirmed_df['Lat'], confirmed_df['Long_'],
-                    *(confirmed_df.columns[start_index:])
-                )
-                death_df = death_df.select(
-                    death_df['Country/Region'],
-                    death_df['Lat'], death_df['Long_'],
-                    *(death_df.columns[start_index:])
-                )
+        # Get latest date from raw table
+        begin_date_str = death_df.schema.names[date_col]
+        begin_date = convert_date(begin_date_str)
+        max_end_date_str = death_df.schema.names[-1]
+        max_end_date = convert_date(max_end_date_str)
+
+        # we only have what the data set could provide
+        if end_date > max_end_date:
+            end_date = max_end_date
+        if latest_date < begin_date:
+            latest_date = begin_date
+
+
+        if latest_date >= end_date:
+            print(f'The system has updated data up to {end_date}. No further extract needed.')
+            return
+        else:
+            ### Resuming extract
+            start_index = date_col + (latest_date - begin_date).days + 1
+            end_index = date_col + (end_date - begin_date).days
+            confirmed_df = confirmed_df.select(
+                confirmed_df['Country/Region'],
+                confirmed_df['Lat'], confirmed_df['Long'],
+                *(confirmed_df.columns[start_index:end_index])
+            )
+            death_df = death_df.select(
+                death_df['Country/Region'],
+                death_df['Lat'], death_df['Long'],
+                *(death_df.columns[start_index:end_index])
+            )
 
         #########
         ### Update latest date
@@ -430,7 +439,7 @@ class Covid:
         this
     """
 
-    def transform_raw_to_fact_us(self):
+    def transform_raw_to_fact_us(self, end_date=datetime.now()):
 
         logger = self.logger
         RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_RAW_TABLE_NAME']
@@ -438,7 +447,7 @@ class Covid:
         is_resume_extract = False
 
         latest_date = self.GU.START_DEFAULT_DATE
-        end_date = self.GU.START_DEFAULT_DATE
+        # end_date = self.GU.START_DEFAULT_DATE
 
         print(f'Transform data from {RAW_TABLE_NAME} to {FACT_TABLE_NAME}.')
 
