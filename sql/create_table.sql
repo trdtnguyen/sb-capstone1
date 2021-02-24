@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS covid19_us_dim(
     code3 INT NOT NULL, -- area code e.g., 840
     FIPS double , -- ???
     Admin2 VARCHAR(128), -- County name e.g., Autauga
-    Province_State VARCHAR(32) NOT NULL UNIQUE, -- State name e.g., Alabama
+    Province_State VARCHAR(32), -- State name e.g., Alabama
     Country_Region VARCHAR(32), -- Country name e.g., US
     Lat double NOT NULL,
     Long_ double NOT NULL,
@@ -118,9 +118,7 @@ CREATE TABLE IF NOT EXISTS covid19_us_fact (
     deaths_inc int,
     confirmed_inc_pct DECIMAL(18, 5),
     deaths_inc_pct DECIMAL(18, 5),
-    
-    PRIMARY KEY(dateid, Province_State),
-    FOREIGN KEY (Province_State) REFERENCES covid19_us_dim(Province_State)
+    PRIMARY KEY(dateid, Province_State)
 );
 
 CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
@@ -136,9 +134,7 @@ CREATE TABLE IF NOT EXISTS covid19_us_monthly_fact (
     deaths_inc int,
     confirmed_inc_pct DECIMAL(18, 5),
     deaths_inc_pct DECIMAL(18, 5),
-
-    PRIMARY KEY(dateid, Province_State),
-    FOREIGN KEY (Province_State) REFERENCES covid19_us_dim(Province_State)
+    PRIMARY KEY(dateid, Province_State)
 );
 
 
