@@ -269,6 +269,20 @@ class Covid:
         print('Done extract_us')
 
     def extract_global(self, end_date=datetime.now()):
+        """Extract data from covid19 data source for the global from start_date to end_date.
+
+        This function fill data for covid19_global_raw table and covid19_global_dim table
+
+        start_date gets from default value in config file at the first time.
+        From later time, start_date is get from the previous end_date.
+
+        Args:
+            end_date (datetime): the end date of the data source
+
+        Returns:
+            None
+
+        """
         logger = self.logger
         RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_RAW_TABLE_NAME']
         DIM_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_DIM_TABLE_NAME']
@@ -526,12 +540,9 @@ class Covid:
                 return
             else:
                 ### Resuming transform
-                before = raw_df.count()
                 raw_df = raw_df.filter(
                     raw_df['date'] > latest_date
                 )
-                after = raw_df.count()
-                print(f'Skipped {(before - after)} rows')
 
         # creating table view should be placed after the filtering date
         raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
@@ -726,15 +737,18 @@ class Covid:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
-    """
-    Dependencies:
-        extract_global() -> transform_raw_to_dim_country() ->this
-
-    src table (Province_State, Country_Region, Lat, Long_,date, confirmed, deaths)
-    dest table (dateid, country_code, date, confirmed, deaths)
-    """
-
     def transform_raw_to_fact_global(self, end_date=datetime.now()):
+        """ Transform raw table to fact table
+
+        src table (Province_State, Country_Region, Lat, Long_,date, confirmed, deaths)
+        dest table (dateid, country_code, date, confirmed, deaths)
+
+        Arguments:
+            end_date (datetime): the end date of data
+        Dependencies:
+            extract_global() -> transform_raw_to_dim_country() ->this
+
+        """
 
         logger = self.logger
         RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_RAW_TABLE_NAME']
@@ -820,31 +834,34 @@ class Covid:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
-    """
-    Dependencies:
-        extract_us() ->
-        transform_raw_to_fact_us().
-        extract_global() ->
-        transform_raw_to_fact_global() ->
-        this
-    """
 
-    def aggregate_fact_to_sum_fact(self):
+
+    def aggregate_fact_to_sum_fact(self, end_date=datetime.now()):
+        """ Aggregate fact tables from both US tables and global table into a new table by sum aggregate
+
+        fact tables must be populated first before running this function.
+        Dependencies:
+            extract_us() ->
+            transform_raw_to_fact_us().
+            extract_global() ->
+            transform_raw_to_fact_global() ->
+            this
+        """
+
         logger = self.logger
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_SUM_FACT_TABLE']
         US_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_FACT_TABLE_NAME']
         GLOBAL_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_FACT_TABLE_NAME']
         is_resume_extract = False
         latest_date = self.GU.START_DEFAULT_DATE
-        end_date = self.GU.START_DEFAULT_DATE
+
+        # the covid data only have data from Jan 02 2020
         start_date = datetime(2020, 1, 2)
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
-
-        end_date = datetime.now()
 
         if is_resume_extract:
             # we only compare two dates by day, month, year excluding time
@@ -858,11 +875,14 @@ class Covid:
 
         latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
         #########
-        ### Step 2 Read fact tables and create temp view
+        ### Step 2 Read fact tables, filter, and create temp view
         #########
         us_fact_df = self.GU.read_from_db(self.spark, US_FACT_TABLE_NAME)
+        us_fact_df = us_fact_df.filter(us_fact_df['date'] > start_date)
         us_fact_df.createOrReplaceTempView(US_FACT_TABLE_NAME)
+
         global_fact_df = self.GU.read_from_db(self.spark, GLOBAL_FACT_TABLE_NAME)
+        global_fact_df = global_fact_df.filter(global_fact_df['date'] > start_date)
         global_fact_df.createOrReplaceTempView(GLOBAL_FACT_TABLE_NAME)
         #########
         ### Step 3 Aggregate each table to compute sum of cases
@@ -927,12 +947,16 @@ class Covid:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
-    """
-    Dependencies:
-        aggregate_fact_to_sum_fact
-    """
 
     def aggregate_fact_to_sum_monthly_fact(self):
+        """ aggregate from fact table to monthly fact table
+
+        Dependencies:
+        aggregate_fact_to_sum_fact
+
+        Returns:
+            None
+        """
         logger = self.logger
         FACT_TABLE_NAME = 'covid19_sum_fact'
         MONTHLY_FACT_TABLE_NAME = 'covid19_sum_monthly_fact'
@@ -950,9 +974,9 @@ class Covid:
             end_date = end_date_arr[0][1]
 
         fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
-        ## Note: We need to perfrom "Upsert" operation (Update or Insert) to ensure the last month data is correct
-        ### Currently, we don't implement Resuming transform since we still not figure out how to Upsert
-        ### So all monthly data is rewrite everytime we run the ETL pipeline
+        # Note: We need to perform "Upsert" operation (Update or Insert) to ensure the last month data is correct
+        # Currently, we don't implement Resuming transform since we still not figure out how to Upsert
+        # So all monthly data is rewrite everytime we run the ETL pipeline
         if is_resume_extract:
             if latest_date >= end_date:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
