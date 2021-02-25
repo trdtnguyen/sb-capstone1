@@ -480,7 +480,7 @@ class Covid:
             end_date = end_date_arr[0][1]
 
         raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
-        raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
+
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -495,6 +495,8 @@ class Covid:
                 after = raw_df.count()
                 print(f'Skipped {(before - after)} rows')
 
+        # create table should be placed after the filtering date
+        raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
         #########
         ### Step 2 Update latest date
         #########
