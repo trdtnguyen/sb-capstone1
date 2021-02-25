@@ -139,7 +139,8 @@ class Covid:
             diff1 = latest_date - begin_date
 
             start_index = date_col + (latest_date - begin_date).days + 1
-            end_index = date_col + (end_date - begin_date).days
+            # note that array[begin:end] excludes the end index, so we need + 1
+            end_index = date_col + (end_date - begin_date).days + 1
             confirmed_us_df = confirmed_us_df.select(
                 confirmed_us_df['UID'], confirmed_us_df['iso2'], confirmed_us_df['iso3'],
                 confirmed_us_df['code3'], confirmed_us_df['FIPS'], confirmed_us_df['Admin2'],
@@ -223,7 +224,8 @@ class Covid:
 
     def extract_global(self, end_date=datetime.now()):
         logger = self.logger
-        RAW_TABLE_NAME = 'covid19_global_raw'
+        RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_RAW_TABLE_NAME']
+        DIM_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_DIM_TABLE_NAME']
         is_resume_extract = False
         date_col = 4  # the index of date column in the df
 
@@ -277,7 +279,8 @@ class Covid:
         else:
             ### Resuming extract
             start_index = date_col + (latest_date - begin_date).days + 1
-            end_index = date_col + (end_date - begin_date).days
+            # note that array[begin:end] excludes the end index, so we need + 1
+            end_index = date_col + (end_date - begin_date).days + 1
             confirmed_df = confirmed_df.select(
                 confirmed_df['Country/Region'],
                 confirmed_df['Lat'], confirmed_df['Long'],
@@ -294,10 +297,20 @@ class Covid:
         #########
         latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
 
-        # print('Done.')
+
         #######################################
         # Step 3 Transform data
         #######################################
+        # get data for dim table
+        if not is_resume_extract:
+            dim_df = death_df.select(death_df['Country/Region'], death_df['Lat'], death_df['Long'])
+
+            dim_df = dim_df.withColumnRenamed('Long', 'Long_')\
+                .withColumnRenamed('Country/Region', 'Country_Region')
+            latest_df = self.GU.update_latest_data(latest_df, DIM_TABLE_NAME, end_date)
+
+
+
         by_cols = ['Country/Region', 'Lat', 'Long']
         trans_df1 = self.GU.transpose_columns_to_rows(confirmed_df,
                                                  by_cols, 'date', 'confirmed')
@@ -326,11 +339,15 @@ class Covid:
         ####################################
         # Step 4 Write to Database
         ####################################
-        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
-        self.GU.write_latest_data(latest_df, logger)
+        if not is_resume_extract:
+            print(f'Write to table {DIM_TABLE_NAME} ...')
+            self.GU.write_to_db(dim_df, DIM_TABLE_NAME, logger)
+
         print(f'Write to table {RAW_TABLE_NAME}...')
         self.GU.write_to_db(df, RAW_TABLE_NAME, logger)
 
+        print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
+        self.GU.write_latest_data(latest_df, logger)
         print('Done extract_global.')
 
     """
