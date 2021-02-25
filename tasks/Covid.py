@@ -7,7 +7,7 @@ __author__ = 'Dat Nguyen'
 import os
 from os import environ as env
 import sys
-#sys.path.append(os.path.join(os.path.dirname(__file__), ".", ".."))
+# sys.path.append(os.path.join(os.path.dirname(__file__), ".", ".."))
 
 from tasks.GlobalUtil import GlobalUtil
 # import pandas as pd
@@ -21,13 +21,16 @@ from db.DB import DB
 import configparser
 from datetime import timedelta, datetime
 
-print (sys.path)
+print(sys.path)
 
 
-"""
-   Convert from string 'yyyy/mm/dd' to datetime
-"""
 def convert_date(in_date: str):
+    """Convert from string 'yyyy/mm/dd' to datetime
+       Args:
+           in_date (str): The date string need to be converted to
+       Returns:
+           datetime: the converted datetime
+    """
     d_list = in_date.split('/')
     year = int('20' + d_list[2])
     month = int(d_list[0])
@@ -37,31 +40,60 @@ def convert_date(in_date: str):
     return out_date
 
 
-"""
-Convert from datetime to dateid
-"""
 def from_date_to_dateid(date: datetime):
+    """ Convert from datetime to dateid
+    Args:
+        date (datetime): the input datetime
+    Returns:
+         int: the dateid converted from date
+    """
     date_str = date.strftime('%Y-%m-%d')
     date_str = date_str.replace('-', '')
     dateid = int(date_str)
     return dateid
 
+
 def create_first_day_of_month(year: int, month: int):
+    """ create a datetime object with given year and month and the day as 1
+    Args:
+        year (int): input year
+        month (int): input month
+    Returns:
+        datetime: the datatime object with given year and month and the day as 1
+    """
     return datetime(year, month, 1)
 
+
 def create_first_dateid_of_month(year: int, month: int):
+    """ create a dateid from given year and month with day as 1. This functiton calls from_date_to_dateid() function
+    Args:
+         year (int): input year
+         month (int): input month
+    Returns:
+        int: dateid
+    """
     return from_date_to_dateid(datetime(year, month, 1))
 
+
 def get_month_name(date):
+    """ get month name from input datetime
+    Arguments:
+         date (datetime): input datetime
+    Returns:
+        string: month name of the input datetime
+    """
     month_name = date.strftime('%B')
     return month_name
 
+
 class Covid:
-    """Constructor
-
-    """
-
     def __init__(self, spark: SparkSession):
+        """Constructor
+        Arguments:
+            spark (SparkSession): spark session creted in the driver
+        Returns:
+            None
+        """
         user = env.get('MYSQL_USER')
         db_name = env.get('MYSQL_DATABASE')
         pw = env.get('MYSQL_PASSWORD')
@@ -80,6 +112,20 @@ class Covid:
         self.GU = GlobalUtil.instance()
 
     def extract_us(self, end_date=datetime.now()):
+        """Extract data from covid19 data source for the US from start_date to end_date.
+
+        This function fill data for covid19_us_raw table and covid19_us_dim table
+
+        start_date gets from default value in config file at the first time.
+        From later time, start_date is get from the previous end_date.
+
+        Args:
+            end_date (datetime): the end date of the data source
+
+        Returns:
+            None
+
+        """
         conn = self.conn
         logger = self.logger
         RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_US_RAW_TABLE_NAME']
@@ -191,9 +237,9 @@ class Covid:
         by_cols2.append('Population')
 
         trans_df1 = self.GU.transpose_columns_to_rows(confirmed_us_df,
-                                                 by_cols1, 'date', 'confirmed')
+                                                      by_cols1, 'date', 'confirmed')
         trans_df2 = self.GU.transpose_columns_to_rows(death_us_df,
-                                                 by_cols2, 'date', 'deaths')
+                                                      by_cols2, 'date', 'deaths')
         df = trans_df2.join(trans_df1, (trans_df1.UID == trans_df2.UID) & (trans_df1.date == trans_df2.date)) \
             .select(
             trans_df2['UID'], trans_df2['iso2'], trans_df2['iso3'],
@@ -205,7 +251,7 @@ class Covid:
         # Refine the date column from 'yyyy/mm/dd' to 'yyyy-mm-dd'
         date_udf = udf(lambda d: convert_date(d), DateType())
         df = df.withColumn('date', date_udf(df['date']))
-        #if __debug__:
+        # if __debug__:
         #    df.show()
 
         ####################################
@@ -248,8 +294,6 @@ class Covid:
         death_df = death_df.filter(death_df['Province/State'].isNull())
         death_df = death_df.drop(death_df['Province/State'])
 
-
-
         COL_NAMES = ['Province_State', 'Country_Region', 'Lat', 'Long_'
                                                                 'date', 'confirmed', 'deaths']
         #######################################
@@ -257,8 +301,8 @@ class Covid:
         #######################################
         # print('Read from database ...')
         latest_df, is_resume_extract, latest_date = self.GU.read_latest_data(self.spark, RAW_TABLE_NAME)
-        #latest_df = latest_df.cache()
-        #latest_df.count()
+        # latest_df = latest_df.cache()
+        # latest_df.count()
 
         # Get latest date from raw table
         begin_date_str = death_df.schema.names[date_col]
@@ -271,7 +315,6 @@ class Covid:
             end_date = max_end_date
         if latest_date < begin_date:
             latest_date = begin_date
-
 
         if latest_date >= end_date:
             print(f'The system has updated data up to {end_date}. No further extract needed.')
@@ -297,7 +340,6 @@ class Covid:
         #########
         latest_df = self.GU.update_latest_data(latest_df, RAW_TABLE_NAME, end_date)
 
-
         #######################################
         # Step 3 Transform data
         #######################################
@@ -305,17 +347,15 @@ class Covid:
         if not is_resume_extract:
             dim_df = death_df.select(death_df['Country/Region'], death_df['Lat'], death_df['Long'])
 
-            dim_df = dim_df.withColumnRenamed('Long', 'Long_')\
+            dim_df = dim_df.withColumnRenamed('Long', 'Long_') \
                 .withColumnRenamed('Country/Region', 'Country_Region')
             latest_df = self.GU.update_latest_data(latest_df, DIM_TABLE_NAME, end_date)
 
-
-
         by_cols = ['Country/Region', 'Lat', 'Long']
         trans_df1 = self.GU.transpose_columns_to_rows(confirmed_df,
-                                                 by_cols, 'date', 'confirmed')
+                                                      by_cols, 'date', 'confirmed')
         trans_df2 = self.GU.transpose_columns_to_rows(death_df,
-                                                 by_cols, 'date', 'deaths')
+                                                      by_cols, 'date', 'deaths')
         df = trans_df2.join(trans_df1,
                             (trans_df1['Country/Region'] == trans_df2['Country/Region']) &
                             (trans_df1.date == trans_df2.date)) \
@@ -374,7 +414,6 @@ class Covid:
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, MONTHLY_FACT_TABLE_NAME)
 
-
         end_date_arr = latest_df.filter(latest_df['table_name'] == FACT_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
@@ -421,7 +460,7 @@ class Covid:
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
         dateid_udf = udf(lambda d: from_date_to_dateid(d), IntegerType())
 
-        #month_name_udf = udf(lambda d: get_month_name(d), StringType())
+        # month_name_udf = udf(lambda d: get_month_name(d), StringType())
         month_name_udf = udf(lambda d: d.strftime('%B'), StringType())
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
         df = df.withColumn('dateid', dateid_udf(df['date'])) \
@@ -473,14 +512,13 @@ class Covid:
         #######################################
         latest_df, is_resume_extract, latest_date = self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
-
+        # assign the end_date to the latest day in raw table
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
             end_date = end_date_arr[0][1]
 
         raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
-
 
         if is_resume_extract:
             if latest_date >= end_date:
@@ -495,7 +533,7 @@ class Covid:
                 after = raw_df.count()
                 print(f'Skipped {(before - after)} rows')
 
-        # create table should be placed after the filtering date
+        # creating table view should be placed after the filtering date
         raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
         #########
         ### Step 2 Update latest date
@@ -510,7 +548,7 @@ class Covid:
         key2 = 'date'
         s = f"SELECT {key1}, {key2}, SUM(confirmed) as confirmed, SUM(deaths) as deaths" + \
             f" FROM {RAW_TABLE_NAME} " + \
-            f" GROUP BY {key1}, {key2} " +\
+            f" GROUP BY {key1}, {key2} " + \
             f" ORDER BY {key1}, {key2}"
         df = self.spark.sql(s)
         # Rename
@@ -527,7 +565,7 @@ class Covid:
         df = self.GU.add_prev_diff(df,
                                    'deaths', 'deaths_inc', 'deaths_inc_pct',
                                    key1, key2)
-        #if __debug__:
+        # if __debug__:
         # df.show()
 
         ####################################
@@ -537,7 +575,6 @@ class Covid:
         self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
-
 
         print('Done.')
 
@@ -577,15 +614,14 @@ class Covid:
             f"WHERE {COUNTRY_TABLE_NAME}.Name = {RAW_TABLE_NAME}.Country_Region "
         # "GROUP BY code"
 
-        df = self.spark.read.option("delimiter", ";")\
+        df = self.spark.read.option("delimiter", ";") \
             .csv(file1, header=True, inferSchema=True)
         df = df.select(df['code'], df['Name'], df['Continent'], df['Region'],
-                  df['SurfaceArea'], df['IndepYear'], df['Population'],
-                  df['LifeExpectancy'], df['GNP'], df['LocalName'], df['GovernmentForm'],
-                  df['HeadOfState'], df['Capital'], df['Code2'])
+                       df['SurfaceArea'], df['IndepYear'], df['Population'],
+                       df['LifeExpectancy'], df['GNP'], df['LocalName'], df['GovernmentForm'],
+                       df['HeadOfState'], df['Capital'], df['Code2'])
         end_date = datetime.today()
         latest_df = self.GU.update_latest_data(latest_df, DIM_TABLE_NAME, end_date)
-
 
         ####################################
         # Step 3 Write to Database
@@ -671,7 +707,7 @@ class Covid:
         df = df.select(df['dateid'], df[key], df['date'], df['year'],
                        df['month'], df['month_name'], df['confirmed'], df['deaths'])
 
-        #df.show()
+        # df.show()
         # Aggregate columns that show differences between curernt day and the previous day
         df = self.GU.add_prev_diff(df,
                                    'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
@@ -690,7 +726,6 @@ class Covid:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
-
     """
     Dependencies:
         extract_global() -> transform_raw_to_dim_country() ->this
@@ -699,7 +734,7 @@ class Covid:
     dest table (dateid, country_code, date, confirmed, deaths)
     """
 
-    def transform_raw_to_fact_global(self):
+    def transform_raw_to_fact_global(self, end_date=datetime.now()):
 
         logger = self.logger
         RAW_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_GLOBAL_RAW_TABLE_NAME']
@@ -709,7 +744,7 @@ class Covid:
         is_resume_extract = False
 
         latest_date = self.GU.START_DEFAULT_DATE
-        end_date = self.GU.START_DEFAULT_DATE
+        # end_date = self.GU.START_DEFAULT_DATE
         print(f'Transform data by joining {RAW_TABLE_NAME}, {DIM_TABLE_NAME} to {FACT_TABLE_NAME}.')
 
         # 1. Transform from raw to fact table
@@ -719,6 +754,7 @@ class Covid:
         #######################################
         latest_df, is_resume_extract, latest_date = self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
+        # assign the end_date to the latest day in raw table
         end_date_arr = latest_df.filter(latest_df['table_name'] == RAW_TABLE_NAME).collect()
         if len(end_date_arr) > 0:
             assert len(end_date_arr) == 1
@@ -727,7 +763,6 @@ class Covid:
         raw_df = self.GU.read_from_db(self.spark, RAW_TABLE_NAME)
         dim_df = self.GU.read_from_db(self.spark, DIM_TABLE_NAME)
 
-        raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
         dim_df.createOrReplaceTempView(DIM_TABLE_NAME)
 
         if is_resume_extract:
@@ -741,8 +776,10 @@ class Covid:
                     raw_df['date'] > latest_date
                 )
                 after = raw_df.count()
-                print(f'Skipped {(after - before)} rows')
+                print(f'Skipped {(before - after)} rows')
 
+        # creating table view should be placed after the filtering date
+        raw_df.createOrReplaceTempView(RAW_TABLE_NAME)
         #########
         ### Step 2 Update latest date
         #########
@@ -751,20 +788,12 @@ class Covid:
         #########
         ### Step 3 Transform
         #########
-        # Join RAW_TABLE_NAME and COUNTRY_TABLE_NAME
-        # s = text("SELECT DISTINCT code, date, SUM(confirmed), SUM(deaths) "
-        #          f"FROM  {COUNTRY_TABLE_NAME}, {RAW_TABLE_NAME} "
-        #          f"WHERE {COUNTRY_TABLE_NAME}.Name = {RAW_TABLE_NAME}.Country_Region "
-        #          "GROUP BY Country_Region, date "
-        #          "ORDER BY code "
-        #          )
-
         # Note: some contries (e.g., United Kingdom) have data from both the country and the Province_State
         # so in such case, we just get the data from row where Province_State is null (the country)
         key = 'Country_Region'
-        s = f"SELECT DISTINCT {key}, date, confirmed, deaths " +\
-                 f" FROM  {RAW_TABLE_NAME} " +\
-                 f"ORDER BY date, {key}"
+        s = f"SELECT DISTINCT {key}, date, confirmed, deaths " + \
+            f" FROM  {RAW_TABLE_NAME} " + \
+            f"ORDER BY date, {key}"
         trans_df = self.spark.sql(s)
         trans_df = trans_df.toDF(key, 'date', 'confirmed', 'deaths')
 
@@ -774,14 +803,6 @@ class Covid:
         # TODO: current country_dim table is out-of-date. So we use only the covid19_global_raw
         # without join with country_dim
 
-        # temp_table_name = RAW_TABLE_NAME+"_trans"
-        # trans_df.createOrReplaceTempView(temp_table_name)
-        # s = "SELECT DISTINCT dateid, code as country_code, date, confirmed, deaths " + \
-        #     f"FROM  {temp_table_name} ,{DIM_TABLE_NAME} " + \
-        #     f"WHERE {temp_table_name}.Country_Region = {DIM_TABLE_NAME}.Name " +\
-        #     "ORDER BY dateid, country_code, date"
-        # df = self.spark.sql(s)
-
         # Aggregate columns that show differences between curernt day and the previous day
         df = self.GU.add_prev_diff(df,
                                    'confirmed', 'confirmed_inc', 'confirmed_inc_pct',
@@ -789,7 +810,7 @@ class Covid:
         df = self.GU.add_prev_diff(df,
                                    'deaths', 'deaths_inc', 'deaths_inc_pct',
                                    key, 'date')
-        #df.show(n=50)
+        # df.show(n=50)
         ####################################
         # Step 4 Write to Database
         ####################################
@@ -956,7 +977,7 @@ class Covid:
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
 
         s = "SELECT YEAR(date), MONTH(date), " + \
-            " MAX(us_confirmed), MAX(us_deaths), " +\
+            " MAX(us_confirmed), MAX(us_deaths), " + \
             "MAX(global_confirmed), MAX(global_deaths) " + \
             f"FROM {FACT_TABLE_NAME} " + \
             f"GROUP BY YEAR(date), MONTH(date) " + \
@@ -967,7 +988,7 @@ class Covid:
         df = df.toDF('year', 'month',
                      'us_confirmed', 'us_deaths', 'global_confirmed', 'global_deaths')
         first_day_udf = udf(lambda y, m: datetime(y, m, 1), DateType())
-        first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y,m), IntegerType())
+        first_dateid_udf = udf(lambda y, m: create_first_dateid_of_month(y, m), IntegerType())
         month_name_udf = udf(lambda d: get_month_name(d), StringType())
         df = df.withColumn('dateid', first_dateid_udf(df['year'], df['month']))
         df = df.withColumn('date', first_day_udf(df['year'], df['month']))
@@ -1007,10 +1028,8 @@ class Covid:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
-
-
 # Self test
-#GU = GlobalUtil.instance()
+# GU = GlobalUtil.instance()
 
 # spark = SparkSession \
 #     .builder \
