@@ -82,14 +82,16 @@ class BOL:
 
         if is_resume_extract:
             # we only compare two dates by month, year excluding time
-            if latest_date.year >= end_date.year and \
-                    latest_date.month >= end_date.month:
+            # if latest_date.year >= end_date.year and \
+            #         latest_date.month >= end_date.month:
+            if latest_date >= end_date:
                 print(f'The system has updated data up to year {end_date.year}, '
                       f'month {end_date.month}. No further extract needed.')
                 return
             else:
                 # start date is the next month
-                start_date = latest_date + datetime(month=1)
+                # start_date = latest_date + datetime(month=1)
+                start_date = latest_date
         start_year = start_date.year
         # Note that the API allow maximum 10 years range
 

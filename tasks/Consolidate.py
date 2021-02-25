@@ -49,28 +49,39 @@ class Consolidation:
         self.conn = self.db.get_conn()
         self.logger = self.db.get_logger()
 
-    """
-    Consolidate Stock and Covid data on daily basic
-    """
-    def consolidate_covid_stock(self):
+    def consolidate_covid_stock(self, end_date=datetime.now()):
+        """ Consolidate Stock and Covid data on a daily basic
+        One challenge in this function is stock date is not available at weekend but
+        covid data do. So we need to left join covid data with stock data and filling null
+        value on stock indexes (on Saturday and Sunday) with the previous non-null value
+
+
+        """
         logger = self.logger
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
         STOCK_INDEX_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['STOCK_INDEX_FACT_TABLE_NAME']
         COVID_SUM_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_SUM_FACT_TABLE']
         COL_NAMES = ['dowjones_score', 'nasdaq100_score', 'sp500_score']
+
+        start_date = self.GU.START_DEFAULT_DATE
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
-        end_date = datetime.now()
+        # end_date = datetime.now()
+        end_date_arr = latest_df.filter(latest_df['table_name'] == COVID_SUM_FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
 
         if is_resume_extract:
             # we only compare two dates by day, month, year excluding time
-            if latest_date.day == end_date.day and \
-                    latest_date.month == end_date.month and \
-                    latest_date.year == end_date.year:
+            # if latest_date.day == end_date.day and \
+            #         latest_date.month == end_date.month and \
+            #         latest_date.year == end_date.year:
+            if latest_date >= end_date:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
@@ -83,9 +94,14 @@ class Consolidation:
         #######################################
         # Read tables on main memory for join
         df1 = self.GU.read_from_db(self.spark, STOCK_INDEX_FACT_TABLE_NAME)
+        # Note: since we need to fill null value in the result table with the previous non-null data,
+        # we skip filter here. The reason for this is that if after filter there are only weekend day,
+        # i.e., all the value of stock index are null then we could not find the previous non-null value to fill
+        # df1 = df1.filter(df1['date'] > start_date)
         df1.createOrReplaceTempView(STOCK_INDEX_FACT_TABLE_NAME)
 
         df2 = self.GU.read_from_db(self.spark, COVID_SUM_FACT_TABLE_NAME)
+        # df2 = df2.filter(df2['date'] > start_date)
         df2.createOrReplaceTempView(COVID_SUM_FACT_TABLE_NAME)
 
         s = "SELECT DISTINCT c.dateid, c.date, " + \
@@ -110,6 +126,8 @@ class Consolidation:
                                        .over(Window.orderBy('dateid')
                                        .rowsBetween(-sys.maxsize, 0)
                                ))
+        # we do the filter here after filling null value
+        df = df.filter(df['date'] > start_date)
         # df.show()
         print(f'Write to table {FACT_TABLE_NAME}...')
         self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
@@ -117,10 +135,10 @@ class Consolidation:
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
 
-    """
-    Aggregate from daily data to monthly data
-    """
     def aggregate_covid_stock_monthly_fact(self):
+        """Aggregate from daily data to monthly data
+
+        """
         logger = self.logger
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_FACT_TABLE_NAME']
         MONTHLY_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_MONTHLY_FACT_TABLE_NAME']
@@ -143,13 +161,15 @@ class Consolidation:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
+                pass
+                ### TODO: impelement Upsert in order to use this
                 ### Resuming transform
-                before = fact_df.count()
-                fact_df = fact_df.filter(
-                    fact_df['date'] > latest_date
-                )
-                after = fact_df.count()
-                print(f'Skipped {(before - after)} rows')
+                # before = fact_df.count()
+                # fact_df = fact_df.filter(
+                #     fact_df['date'] > latest_date
+                # )
+                # after = fact_df.count()
+                # print(f'Skipped {(before - after)} rows')
 
         latest_df = self.GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
         #########
@@ -211,14 +231,14 @@ class Consolidation:
         # Step 4 Write to Database
         ####################################
         print(f'Write to table {MONTHLY_FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger)
+        self.GU.write_to_db(df, MONTHLY_FACT_TABLE_NAME, logger, 'overwrite')
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')
     """
     Consolidate Covid, Stock and BOL data from fact tables
     """
-    def consolidate_covid_stock_bol(self):
+    def consolidate_covid_stock_bol(self, end_date=datetime.now()):
         logger = self.logger
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_BOL_FACT_TABLE_NAME']
         COVID_STOCK_MONTHLY_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['COVID_STOCK_MONTHLY_FACT_TABLE_NAME']
@@ -230,7 +250,11 @@ class Consolidation:
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
-        end_date = datetime.now()
+        # end_date = datetime.now()
+        end_date_arr = latest_df.filter(latest_df['table_name'] == COVID_STOCK_MONTHLY_FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
 
         if is_resume_extract:
             # we only compare two dates by day, month, year excluding time
@@ -275,7 +299,7 @@ class Consolidation:
         df = df.withColumn('month_name', month_name_udf(df['date']))
 
         print(f'Write to table {FACT_TABLE_NAME}...')
-        self.GU.write_to_db(df, FACT_TABLE_NAME, logger)
+        self.GU.write_to_db(df, FACT_TABLE_NAME, logger, 'overwrite')
         print(f'Write to table {self.GU.LATEST_DATA_TABLE_NAME}...')
         self.GU.write_latest_data(latest_df, logger)
         print('Done.')

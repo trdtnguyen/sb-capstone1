@@ -863,11 +863,18 @@ class Covid:
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
+        # assign the end_date to the latest day in raw table
+        end_date_arr = latest_df.filter(latest_df['table_name'] == US_FACT_TABLE_NAME).collect()
+        if len(end_date_arr) > 0:
+            assert len(end_date_arr) == 1
+            end_date = end_date_arr[0][1]
+
         if is_resume_extract:
             # we only compare two dates by day, month, year excluding time
-            if latest_date.day == end_date.day and \
-                    latest_date.month == end_date.month and \
-                    latest_date.year == end_date.year:
+            # if latest_date.day == end_date.day and \
+            #         latest_date.month == end_date.month and \
+            #         latest_date.year == end_date.year:
+            if latest_date >= end_date:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
@@ -948,7 +955,7 @@ class Covid:
         print('Done.')
 
 
-    def aggregate_fact_to_sum_monthly_fact(self):
+    def aggregate_fact_to_sum_monthly_fact(self, end_date=datetime.now()):
         """ aggregate from fact table to monthly fact table
 
         Dependencies:
@@ -961,7 +968,7 @@ class Covid:
         FACT_TABLE_NAME = 'covid19_sum_fact'
         MONTHLY_FACT_TABLE_NAME = 'covid19_sum_monthly_fact'
         latest_date = self.GU.START_DEFAULT_DATE
-        end_date = datetime.now()
+
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
@@ -974,6 +981,7 @@ class Covid:
             end_date = end_date_arr[0][1]
 
         fact_df = self.GU.read_from_db(self.spark, FACT_TABLE_NAME)
+        # fact_df.show()
         # Note: We need to perform "Upsert" operation (Update or Insert) to ensure the last month data is correct
         # Currently, we don't implement Resuming transform since we still not figure out how to Upsert
         # So all monthly data is rewrite everytime we run the ETL pipeline
@@ -985,12 +993,12 @@ class Covid:
                 ### TODO: impelement Upsert in order to use this
                 pass
                 ### Resuming transform
-                before = fact_df.count()
-                fact_df = fact_df.filter(
-                    fact_df['date'] > latest_date
-                )
-                after = fact_df.count()
-                print(f'Skipped {(before - after)} rows')
+                # before = fact_df.count()
+                # fact_df = fact_df.filter(
+                #     fact_df['date'] > latest_date
+                # )
+                # after = fact_df.count()
+                # print(f'Skipped {(before - after)} rows')
 
         # Update latest date
         latest_df = self.GU.update_latest_data(latest_df, MONTHLY_FACT_TABLE_NAME, end_date)
@@ -998,6 +1006,7 @@ class Covid:
         ### Step 2 Transform
         #########
         print(f'Transform data from {FACT_TABLE_NAME} to {MONTHLY_FACT_TABLE_NAME}.')
+
         fact_df.createOrReplaceTempView(FACT_TABLE_NAME)
 
         s = "SELECT YEAR(date), MONTH(date), " + \
@@ -1008,6 +1017,7 @@ class Covid:
             "ORDER BY YEAR(date), MONTH(date) "
 
         df = self.spark.sql(s)
+
         # Change columns name by index to match the schema
         df = df.toDF('year', 'month',
                      'us_confirmed', 'us_deaths', 'global_confirmed', 'global_deaths')
