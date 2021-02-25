@@ -62,7 +62,7 @@ class BOL:
         conn = self.conn
         logger = self.logger
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['BOL_SERIES_FACT_TABLE_NAME']
-        DIM_TABLE_NAME = 'bol_series_dim'
+        DIM_TABLE_NAME = self.GU.CONFIG['DATABASE']['BOL_SERIES_DIM_TABLE_NAME']
 
         is_resume_extract = False
         latest_date = self.GU.START_DEFAULT_DATE
@@ -95,6 +95,7 @@ class BOL:
 
         end_year = end_date.year
 
+        # the API only allow get 10 year period
         if start_year + 10 < end_year:
             start_year = end_year - 10
         #########
