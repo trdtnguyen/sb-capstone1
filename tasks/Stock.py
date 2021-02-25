@@ -364,7 +364,7 @@ class Stock:
     """
     Extract major stock indexes from Fred (NASDAQ100, SP500, DOW JONES)
     """
-    def extract_major_stock_indexes(self):
+    def extract_major_stock_indexes(self, end_date=datetime.now()):
         logger = self.logger
         STOCK_INDEXES=self.GU.CONFIG['DATABASE']['STOCK_INDEXES']
         stock_index_arr = STOCK_INDEXES.split(' ')
@@ -372,7 +372,7 @@ class Stock:
         FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['STOCK_INDEX_FACT_TABLE_NAME']
         is_resume_extract = False
         latest_date = self.GU.START_DEFAULT_DATE
-        end_date = self.GU.START_DEFAULT_DATE
+        # end_date = self.GU.START_DEFAULT_DATE
         start_date = datetime(2020, 1, 2)
 
 
@@ -382,17 +382,19 @@ class Stock:
         latest_df, is_resume_extract, latest_date = \
             self.GU.read_latest_data(self.spark, FACT_TABLE_NAME)
 
-        end_date = datetime.now()
+        # end_date = datetime.now()
 
         if is_resume_extract:
             # we only compare two dates by day, month, year excluding time
-            if latest_date.day == end_date.day and \
-                    latest_date.month == end_date.month and \
-                    latest_date.year == end_date.year:
+            # if latest_date.day == end_date.day and \
+            #         latest_date.month == end_date.month and \
+            #         latest_date.year == end_date.year:
+            if latest_date >= end_date:
                 print(f'The system has updated data up to {end_date}. No further extract needed.')
                 return
             else:
-                start_date = latest_date
+                # start date is the next day of the latest date
+                start_date = latest_date + timedelta(days=1)
 
         latest_df = self.GU.update_latest_data(latest_df, FACT_TABLE_NAME, end_date)
         #########
