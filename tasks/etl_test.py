@@ -4,7 +4,7 @@ Self ETL for developer
 __version__ = '0.2'
 __author__ = 'Dat Nguyen'
 
-
+import sys
 from tasks.Covid import Covid
 from tasks.Stock import Stock
 from tasks.BOL import BOL
@@ -28,6 +28,24 @@ import bs4 as bs
 import math # for isnan()
 
 
+opts1 = [opt for opt in sys.argv[1:] if opt.startswith('-')]
+opts2 = [opt for opt in sys.argv[1:] if opt.startswith('--')]
+args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
+
+query_date = datetime.now()
+if '-h' in  opts1:
+    print(f'Test ETL tasks. Usage: {sys.argv[0]} (-h | --help) <argument> ')
+    print('Argument: date the end date in format mm/dd/yyyy')
+    exit(0)
+elif len(args) == 1:
+    try:
+       vals = args[0].split('/')
+       month, day, year = list(map(int, vals))
+       query_date = datetime(year, month, day)
+    except Exception as e:
+        print(e)
+        exit(1)
+
 spark = SparkSession \
     .builder \
     .appName("Covidcor-self-test") \
@@ -37,29 +55,31 @@ spark = SparkSession \
 spark.conf.set("spark.sql.execution.arrow.pyspark.enabled", "true")
 
 etl_covid = True
-etl_stock = False
-etl_bol = False
-etl_consolid = False
-query_date = datetime(2021, 2, 9)
+etl_stock = True
+etl_bol = True
+etl_consolid = True
+
+#query_date = datetime(2021, 2, 16)
+# query_date = datetime(2021, 2, 24)
 #### Covid
 if etl_covid:
     covid = Covid(spark)
     covid.extract_us(query_date)
-    # covid.transform_raw_to_fact_us()
-    # covid.aggregate_fact_to_monthly_fact_us()
-    #
-    # covid.transform_raw_to_dim_country()
-    # covid.extract_global()
-    # covid.transform_raw_to_fact_global()
-    # covid.aggregate_fact_to_monthly_fact_global()
-    # # #
-    # covid.aggregate_fact_to_sum_fact()
-    # covid.aggregate_fact_to_sum_monthly_fact()
+    covid.transform_raw_to_fact_us()
+    covid.aggregate_fact_to_monthly_fact_us()
+
+    ###################
+    covid.extract_global(query_date)
+    covid.transform_raw_to_fact_global()
+    covid.aggregate_fact_to_monthly_fact_global()
+    # # # #
+    covid.aggregate_fact_to_sum_fact()
+    covid.aggregate_fact_to_sum_monthly_fact()
 
 #### Stock
 if etl_stock:
     stock = Stock(spark)
-    stock.extract_major_stock_indexes()
+    stock.extract_major_stock_indexes(query_date)
     stock.aggregate_fact_to_monthly_fact_stock_index()
 
     # stock.extract_sp500_tickers()
@@ -70,7 +90,7 @@ if etl_stock:
 #### BOL
 if etl_bol:
     bol = BOL(spark)
-    bol.extract_BOL()
+    bol.extract_BOL(query_date)
 
 ### Consolidate
 if etl_consolid:
