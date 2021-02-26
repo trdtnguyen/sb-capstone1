@@ -56,7 +56,7 @@ COVID19_CONFIRMED_GLOBAL_URL=https://raw.githubusercontent.com/CSSEGISandData/CO
 
 COVID19_DEATH_GLOBAL_URL=https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv
 WORLD_COUNTRY_FILE=world_country.csv
-
+COVID19_OLDEST_DATE=2020-01-02
 [STOCK]
 STOCK_SP500_URL=http://en.wikipedia.org/wiki/List_of_S%26P_500_companies
 
