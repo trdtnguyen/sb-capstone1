@@ -70,12 +70,12 @@ Before running the ETL pipeline, ensure your Spark driver and workers are starte
 
 We test the project using standalone Spark in a single machine.
 
-* Single ETL load: run `etl_test.py` without argument to get all data from `COVID_OLDEST_DATE` (Jan 2020) to the current date.
+* ***Single ETL load***: run `etl_test.py` without argument to get all data from `COVID_OLDEST_DATE` (Jan 2020) to the current date.
 ```
 $ python tasks/etl_test.py
 ```
 
-*Incremental ETL load: run `etl_test.py` with end date (yyyy-mm-dd) to simulation daily ETL task
+* ***Incremental ETL load***: run `etl_test.py` with end date (yyyy-mm-dd) to simulation daily ETL task
 ```
 $ python tasks/etl_test.py 2021-02-20
 $ python tasks/etl_test.py 2021-02-21
