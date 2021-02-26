@@ -66,9 +66,20 @@ $ mysql -u root -p covid19cor < sql/create_table.sql
 ```
 
 ***Step 4: Run ETL manually***
-Before running the ETL, ensure your Spark driver and workers are started and configurated properly.
+Before running the ETL pipeline, ensure your Spark driver and workers are started and configurated properly.
+
+We test the project using standalone Spark in a single machine.
+
+* ***Single ETL load***: run `etl_test.py` without argument to get all data from `COVID_OLDEST_DATE` (Jan 2020) to the current date.
 ```
 $ python tasks/etl_test.py
+```
+
+* ***Incremental ETL load***: run `etl_test.py` with end date (yyyy-mm-dd) to simulation daily ETL task
+```
+$ python tasks/etl_test.py 2021-02-20
+$ python tasks/etl_test.py 2021-02-21
+$ python tasks/etl_test.py 2021-02-22
 ```
 
 ***Step 5: Config and start front-end Flask App***
