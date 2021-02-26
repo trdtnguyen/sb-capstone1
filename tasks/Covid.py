@@ -856,7 +856,9 @@ class Covid:
         latest_date = self.GU.START_DEFAULT_DATE
 
         # the covid data only have data from Jan 02 2020
-        start_date = datetime(2020, 1, 2)
+        state_date_str = self.GU.CONFIG['COVID19']['COVID19_OLDEST_DATE']
+        start_date = datetime.strptime(state_date_str, '%Y-%m-%d')
+        # start_date = datetime(2020, 1, 2)
         #######################################
         # Step 1 Read from database to determine the last written data point
         #######################################
