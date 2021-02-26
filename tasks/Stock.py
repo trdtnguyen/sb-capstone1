@@ -450,8 +450,9 @@ class Stock:
     """
     def aggregate_fact_to_monthly_fact_stock_index(self):
         logger = self.logger
-        FACT_TABLE_NAME = 'stock_index_fact'
-        MONTHLY_FACT_TABLE_NAME = 'stock_index_monthly_fact'
+
+        FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['STOCK_INDEX_FACT_TABLE_NAME']
+        MONTHLY_FACT_TABLE_NAME = self.GU.CONFIG['DATABASE']['STOCK_INDEX_MONTHLY_TABLE_NAME']
         COL_NAMES = ['dowjones_score', 'nasdaq100_score', 'sp500_score']
         latest_date = self.GU.START_DEFAULT_DATE
         end_date = self.GU.START_DEFAULT_DATE
@@ -475,12 +476,12 @@ class Stock:
                 ### TODO: impelement Upsert in order to use this
                 pass
                 ### Resuming transform
-                before = fact_df.count()
-                fact_df = fact_df.filter(
-                    fact_df['date'] > latest_date
-                )
-                after = fact_df.count()
-                print(f'Skipped {(before - after)} rows')
+                # before = fact_df.count()
+                # fact_df = fact_df.filter(
+                #     fact_df['date'] > latest_date
+                # )
+                # after = fact_df.count()
+                # print(f'Skipped {(before - after)} rows')
 
         #########
         ### Step 2 Update latest date
