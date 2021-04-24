@@ -11,7 +11,7 @@ from pyspark.sql.functions import array, col, explode, struct, lit, udf, when, l
 from pyspark.sql import Window
 from pyspark.sql.types import FloatType
 import configparser
-
+import sys
 
 class GlobalUtil(object):
     # for Singeton usage
@@ -35,7 +35,8 @@ class GlobalUtil(object):
     JDBC_MYSQL_URL = 'jdbc:mysql://' + CONFIG['DATABASE']['MYSQL_HOST'] + ':' + \
                      CONFIG['DATABASE']['MYSQL_PORT'] + '/' + \
                      CONFIG['DATABASE']['MYSQL_DATABASE'] + '?' + \
-                     'rewriteBatchedStatements=true'
+                     'rewriteBatchedStatements=true' + \
+                     '&serverTimezone=UTC'
     DRIVER_NAME = 'com.mysql.cj.jdbc.Driver'
 
     def __init__(self):
@@ -57,28 +58,30 @@ class GlobalUtil(object):
     def read_latest_data(cls, spark, in_table_name):
         is_resume_extract = False
         latest_date = cls.START_DEFAULT_DATE
-        try:
-            latest_df = spark.read.format('jdbc').options(
-                url=cls.JDBC_MYSQL_URL,
-                driver=cls.DRIVER_NAME,
-                dbtable=cls.LATEST_DATA_TABLE_NAME,
-                user=cls.CONFIG['DATABASE']['MYSQL_USER'],
-                password=cls.CONFIG['DATABASE']['MYSQL_PASSWORD']).load()
-            # below code make Spark actually load data
-            latest_df = latest_df.cache()
-            latest_df.count()
+        #try:
+        latest_df = spark.read.format('jdbc').options(
+            url=cls.JDBC_MYSQL_URL,
+            driver=cls.DRIVER_NAME,
+            dbtable=cls.LATEST_DATA_TABLE_NAME,
+            user=cls.CONFIG['DATABASE']['MYSQL_USER'],
+            password=cls.CONFIG['DATABASE']['MYSQL_PASSWORD']).load()
+        # below code make Spark actually load data
+        latest_df = latest_df.cache()
+        latest_df.count()
 
-            if len(latest_df.collect()) > 0:
-                latest_date_arr = latest_df.filter(latest_df['table_name'] == in_table_name).collect()
-                if len(latest_date_arr) > 0:
-                    assert len(latest_date_arr) == 1
+        if len(latest_df.collect()) > 0:
+            latest_date_arr = latest_df.filter(latest_df['table_name'] == in_table_name).collect()
+            if len(latest_date_arr) > 0:
+                assert len(latest_date_arr) == 1
 
-                    latest_date = latest_date_arr[0][1]
-                    if latest_date > cls.START_DEFAULT_DATE:
-                        is_resume_extract = True
-            return latest_df, is_resume_extract, latest_date
-        except:
-            return None, None, None
+                latest_date = latest_date_arr[0][1]
+                if latest_date > cls.START_DEFAULT_DATE:
+                    is_resume_extract = True
+        return latest_df, is_resume_extract, latest_date
+        #except:
+        #    e = sys.exc_info()[0]
+        #    print(e)
+        #    return None, None, None
 
 
 

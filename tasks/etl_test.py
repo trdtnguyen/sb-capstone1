@@ -32,8 +32,8 @@ opts1 = [opt for opt in sys.argv[1:] if opt.startswith('-')]
 opts2 = [opt for opt in sys.argv[1:] if opt.startswith('--')]
 args = [arg for arg in sys.argv[1:] if not arg.startswith('-')]
 
-# query_date = datetime.now()
-query_date = datetime(2021, 2, 16)
+query_date = datetime.now()
+#query_date = datetime(2021, 2, 25)
 if '-h' in  opts1:
     print(f'Test ETL tasks. Usage: {sys.argv[0]} (-h | --help) <argument> ')
     print('Argument: date the end date in format yyyy-mm-dd')
