@@ -1,12 +1,12 @@
 # Correlation between Covid-19 and Economic
-This project provides ready-to-analyze datasets for Covid-19 and other related aspects in our daily life such as stock index, unemployment rate, job opennings, bussiness activities. We implement a full stack solution includes: (1) the front-end dashboard with Flask + jQuery, (2) ETL pipeline with Apache Spark + Python and Apache Airflow for scheduling ETL tasks and (3) MySQL as the back-end DBMS. 
+This project provides ready-to-analyze datasets for Covid-19 and other related aspects in our daily life such as stock index, unemployment rate, job openings, business activities. We implement a full-stack solution that includes: (1) the front-end dashboard with Flask + jQuery, (2) ETL pipeline with Apache Spark + Python and Apache Airflow for scheduling ETL tasks and (3) MySQL as the back-end DBMS. 
 
-By integring covid19 data sorce and other related data sources, this project help users aswer deeper analytics questions such as:
+By integrating covid19 data sources and other related data sources, this project help users answer deeper analytics questions such as:
 * Which stock indexes still going well during the pandemic?
 * What occupation group has the highest/lowest unemployment rate during the pandemic?
-* What occupation still has high job oppens regardless of the pandemic?
-* Do the peak of the unemployment rate and the peak of the new cases of covid19 in the US happend in the same time?
-* How many percentage travel time reduced during the pandemic?
+* What occupation still has high job opens regardless of the pandemic?
+* Does the peak of the unemployment rate and the peak of the new cases of covid19 in the US happen at the same time?
+* Percentage of travel time reduced during the pandemic?
 
 The overall architecture is:
 
