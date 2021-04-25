@@ -45,6 +45,7 @@ covid_global_fact_df = GU.read_from_db(spark, COVID_GLOBAL_FACT_TABLE_NAME)
 
 COVID_STOCK_BOL_FACT_TABLE_NAME = GU.CONFIG['DATABASE']['COVID_STOCK_BOL_FACT_TABLE_NAME']
 covid_stock_bol_df = GU.read_from_db(spark, COVID_STOCK_BOL_FACT_TABLE_NAME)
+covid_stock_bol_df = covid_stock_bol_df.orderBy("dateid")
 
 BOL_SERIES_DIM_TABLE_NAME = GU.CONFIG['DATABASE']['BOL_SERIES_DIM_TABLE_NAME']
 bol_dim_df = GU.read_from_db(spark, BOL_SERIES_DIM_TABLE_NAME)
